@@ -84,6 +84,9 @@ const els = {
   archiveView: document.querySelector("#archiveView"),
   archiveFeed: document.querySelector("#archiveFeed"),
   closeArchiveButton: document.querySelector("#closeArchiveButton"),
+  installBanner: document.querySelector("#installBanner"),
+  installButton: document.querySelector("#installButton"),
+  closeInstallBanner: document.querySelector("#closeInstallBanner"),
 };
 
 boot();
@@ -93,6 +96,8 @@ function boot() {
   processInviteIfLoggedIn();
   bindEvents();
   migrateInvitesForCurrentUser();
+  setupInstallBanner();
+  startHourlyReminder();
   render();
 }
 
@@ -178,6 +183,10 @@ function bindEvents() {
     state.currentEmail = email;
     subscribeToData();
     
+    if (Notification && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
     const params = new URLSearchParams(window.location.search);
     const inviteId = params.get("inviteId");
     const inviteName = params.get("inviteName");
@@ -202,6 +211,24 @@ function bindEvents() {
     if (unsubWorkspaces) unsubWorkspaces();
     if (unsubUsers) unsubUsers();
     render();
+  });
+
+  els.closeInstallBanner?.addEventListener("click", () => {
+    els.installBanner.classList.remove("show");
+    setTimeout(() => els.installBanner.classList.add("hidden"), 300);
+    localStorage.setItem("installBannerDismissed", "true");
+  });
+
+  els.installButton?.addEventListener("click", async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === "accepted") {
+        els.installBanner.classList.remove("show");
+        setTimeout(() => els.installBanner.classList.add("hidden"), 300);
+      }
+      deferredPrompt = null;
+    }
   });
 
   els.workspaceSelect.addEventListener("change", () => {
@@ -895,6 +922,50 @@ function createId(prefix) {
 
 function offsetDate(baseDate, minutes) {
   return new Date(baseDate.getTime() + minutes * 60 * 1000).toISOString();
+}
+
+let deferredPrompt;
+function setupInstallBanner() {
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    
+    if (!localStorage.getItem("installBannerDismissed")) {
+      els.installBanner.classList.remove("hidden");
+      setTimeout(() => els.installBanner.classList.add("show"), 100);
+    }
+  });
+}
+
+function startHourlyReminder() {
+  // Check every minute
+  setInterval(() => {
+    if (!state.currentEmail) return;
+    
+    const now = new Date();
+    const hour = now.getHours();
+    const minute = now.getMinutes();
+
+    // Only alert between 7 AM and 10 PM (inclusive), exactly at minute 0
+    if (hour >= 7 && hour <= 22 && minute === 0) {
+      const lastAlert = localStorage.getItem("lastHourlyAlert");
+      const currentAlertId = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${hour}`;
+      
+      if (lastAlert !== currentAlertId) {
+        localStorage.setItem("lastHourlyAlert", currentAlertId);
+        
+        // Show local OS notification if allowed
+        if (Notification && Notification.permission === "granted") {
+          new Notification("AiFa - Waktunya Mencatat", {
+            body: `Sudah jam ${hour}:00 nih, ada pengeluaran yang perlu dicatat?`,
+            icon: "./icon-192.png"
+          });
+        }
+        
+        showToast(`Sudah jam ${hour}:00 nih, ada pengeluaran yang perlu dicatat?`);
+      }
+    }
+  }, 60 * 1000);
 }
 
 function escapeHtml(value) {

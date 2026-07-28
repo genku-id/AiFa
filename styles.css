@@ -1015,3 +1015,65 @@ svg {
 .compact-icon-btn svg {
   display: none;
 }
+
+/* Install Banner */
+.install-banner {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--bg);
+  border-top: 1px solid var(--line);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  z-index: 100;
+  box-shadow: 0 -2px 10px rgba(0,0,0,0.3);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+}
+
+.install-banner.show {
+  transform: translateY(0);
+}
+
+.install-banner.hidden {
+  display: none !important;
+}
+
+.install-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.install-banner-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.install-banner-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.install-banner-text strong {
+  font-size: 1rem;
+  color: var(--text);
+}
+
+.install-banner-text span {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.install-banner .btn-primary {
+  padding: 6px 16px;
+  min-height: 0;
+  font-size: 0.85rem;
+  margin-right: 12px;
+}
+

@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AiFa - Catatan Keuangan Bersama</title>
+    <meta name="theme-color" content="#121212" />
+    <link rel="manifest" href="./manifest.json" />
+    <link rel="apple-touch-icon" href="./icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <section class="auth-view" id="authView">
+        <div class="auth-panel">
+          <div class="brand-mark" aria-hidden="true">AF</div>
+          <p class="eyebrow">AiFa</p>
+          <h1>Catatan keuangan bersama.</h1>
+          <p class="auth-copy">
+            Catat pemasukan dan pengeluaran bareng.
+            Tabungan tetap privat dan tidak ikut reset.
+          </p>
+
+          <form class="auth-form" id="loginForm">
+            <label for="emailInput">Email akun</label>
+            <input
+              id="emailInput"
+              type="email"
+              autocomplete="email"
+              placeholder="nama@email.com"
+              required
+            />
+
+            <label for="nameInput">Nama tampilan</label>
+            <input
+              id="nameInput"
+              type="text"
+              autocomplete="name"
+              placeholder="Nama kamu"
+            />
+
+            <button class="primary-button" type="submit">Masuk atau Buat Akun</button>
+          </form>
+
+          <button class="ghost-button" id="demoButton" type="button">
+            Pakai data contoh
+          </button>
+        </div>
+      </section>
+
+      <section class="main-view hidden" id="mainView">
+        <aside class="sidebar" aria-label="Navigasi ruang">
+          <div class="sidebar-top">
+            <div>
+              <p class="eyebrow">AiFa</p>
+              <h2>Ruang keuangan</h2>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="icon-button" id="closeSidebarButton" type="button" title="Tutup Dashboard">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M18 6L6 18" />
+                  <path d="M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="account-card" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <span class="avatar" id="userInitials" style="background-size: cover; background-position: center;">AF</span>
+              <div>
+                <strong id="userName">Pengguna</strong>
+                <span id="userEmail">email</span>
+              </div>
+            </div>
+            <button class="icon-button" id="openProfileButton" type="button" title="Pengaturan Profil">
+              <svg viewBox="0 0 24 24" aria-hidden="true" width="20" height="20">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+              </svg>
+            </button>
+          </div>
+
+          <label class="field-label" for="workspaceSelect">Pilih ruang</label>
+          <select id="workspaceSelect"></select>
+
+          <div class="combined-summary-box new-layout" aria-label="Ringkasan total">
+            <div class="summary-top-row">
+              <div class="summary-col income-text">
+                <span class="summary-label">pendapatan</span>
+                <strong class="incomeTotal">0k</strong>
+              </div>
+              <div class="summary-divider"></div>
+              <div class="summary-col expense-text">
+                <span class="summary-label">pengeluaran</span>
+                <strong class="expenseTotal">0k</strong>
+              </div>
+              <div class="summary-divider"></div>
+              <div class="summary-col saving-text">
+                <span class="summary-label">tabungan</span>
+                <button class="text-icon-button compact-icon-btn toggleSavingsButton" type="button">
+                  <strong class="savingTotal">***</strong>
+                </button>
+              </div>
+            </div>
+            <div class="summary-bottom-row balance-text">
+              <span class="summary-label">sisa :</span>
+              <strong class="balanceTotal">0k</strong>
+            </div>
+          </div>
+
+          <div class="dashboard-actions" style="display: flex; gap: 8px; justify-content: flex-start; margin-bottom: 10px;">
+            <button class="secondary-button" id="archiveButton" type="button" style="padding: 4px 10px; font-size: 0.75rem; min-height: 26px;">Lihat arsip</button>
+          </div>
+
+          <form class="compact-form" id="createWorkspaceForm">
+            <input id="workspaceNameInput" type="text" placeholder="Ruang baru" />
+            <button class="secondary-button" type="submit">Buat</button>
+          </form>
+
+          <div class="members-panel">
+            <div class="panel-heading">
+              <span>Anggota</span>
+              <span id="memberCount">0</span>
+            </div>
+            <div class="member-list" id="memberList"></div>
+          </div>
+
+          <div class="invite-panel" style="margin-top: 10px;">
+            <label class="field-label">Undang anggota</label>
+            <button class="secondary-button" id="shareInviteButton" type="button" style="width: auto; margin-top: 6px; padding: 6px 10px; font-size: 0.8rem;">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="margin-right: 4px;">
+                <circle cx="18" cy="5" r="3" />
+                <circle cx="6" cy="12" r="3" />
+                <circle cx="18" cy="19" r="3" />
+                <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+                <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+              </svg>
+              Bagikan Link Undangan
+            </button>
+          </div>
+
+          <div style="margin-top: 24px; padding-top: 12px; border-top: 1px solid var(--line);">
+            <button class="ghost-button" id="logoutButton" type="button" style="width: 100%; color: var(--expense); padding: 8px;">
+              <svg viewBox="0 0 24 24" aria-hidden="true" style="margin-right: 6px; width: 16px; height: 16px;">
+                <path d="M10 17l5-5-5-5" />
+                <path d="M15 12H3" />
+                <path d="M21 3v18" />
+              </svg>
+              Keluar Akun
+            </button>
+          </div>
+        </aside>
+
+        <main class="content">
+          <header class="summary-header">
+            <div class="workspace-title" style="display: flex; align-items: center; justify-content: space-between;">
+              <div>
+                <p class="eyebrow" id="periodLabel">Periode aktif</p>
+                <h1 id="workspaceTitle">Ruang Keuangan</h1>
+              </div>
+              <button class="secondary-button" id="mobileMenuButton" type="button" style="margin-left: 10px; font-size: 0.8rem; padding: 4px 8px; min-height: 28px;">
+                ☰ Menu
+              </button>
+            </div>
+
+            <div class="combined-summary-box new-layout" aria-label="Ringkasan total">
+              <div class="summary-top-row">
+                <div class="summary-col income-text">
+                  <span class="summary-label">pendapatan</span>
+                  <strong class="incomeTotal">0k</strong>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-col expense-text">
+                  <span class="summary-label">pengeluaran</span>
+                  <strong class="expenseTotal">0k</strong>
+                </div>
+                <div class="summary-divider"></div>
+                <div class="summary-col saving-text">
+                  <span class="summary-label">tabungan</span>
+                  <button class="text-icon-button compact-icon-btn toggleSavingsButton" type="button">
+                    <strong class="savingTotal">***</strong>
+                  </button>
+                </div>
+              </div>
+              <div class="summary-bottom-row balance-text">
+                <span class="summary-label">sisa :</span>
+                <strong class="balanceTotal">0k</strong>
+              </div>
+            </div>
+
+
+          </header>
+
+          <section class="chat-panel" aria-label="Chat transaksi" style="position: relative;">
+            <div id="paydayAlertContainer" class="hidden" style="position: absolute; top: 16px; left: 50%; transform: translateX(-50%); z-index: 50; width: 90%; max-width: 340px; text-align: center; background: var(--primary); color: white; padding: 10px 16px; border-radius: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.9rem; font-weight: 600; border: 2px solid rgba(255,255,255,0.2);">
+              <span>💰</span>
+              <span>Waktunya gajian! Mulai catatan baru</span>
+            </div>
+            
+            <div class="feed-toolbar">
+              <div>
+                <strong id="feedTitle">Catatan periode ini</strong>
+                <span id="feedSubtitle">Ketik nominal dan keterangan di bawah.</span>
+              </div>
+              <button class="secondary-button compact" id="clearDraftButton" type="button">Bersihkan</button>
+            </div>
+
+            <div class="chat-feed" id="chatFeed"></div>
+
+            <form class="composer" id="transactionForm">
+              <div class="type-switch" role="tablist" aria-label="Jenis transaksi">
+                <button class="switch-option active" data-type="expense" type="button">
+                  Pengeluaran
+                </button>
+                <button class="switch-option" data-type="income" type="button">
+                  Pendapatan
+                </button>
+                <button class="switch-option private" data-type="saving" type="button">
+                  Tabungan
+                </button>
+              </div>
+
+              <div class="composer-row">
+                <input
+                  id="transactionNoteInput"
+                  type="text"
+                  placeholder="Contoh: makan siang, gaji, tabung motor"
+                  required
+                />
+                <input
+                  id="transactionAmountInput"
+                  type="text"
+                  inputmode="numeric"
+                  placeholder="Nominal"
+                  required
+                />
+                <button class="send-button" type="submit" title="Kirim">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M22 2L11 13" />
+                    <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+                  </svg>
+                </button>
+              </div>
+            </form>
+          </section>
+        </main>
+      </section>
+
+      <section class="archive-view hidden" id="archiveView" style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); z-index: 100; display: flex; flex-direction: column;">
+        <header style="padding: 16px; border-bottom: 1px solid var(--line); display: flex; gap: 12px; align-items: center; background: var(--panel);">
+          <button class="icon-button" id="closeArchiveButton" type="button" title="Tutup Arsip">
+            <svg viewBox="0 0 24 24" aria-hidden="true" width="24" height="24">
+              <path d="M19 12H5" />
+              <path d="M12 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <div style="flex: 1;">
+            <h2 style="margin: 0; font-size: 1.1rem; color: var(--text);">Arsip Transaksi</h2>
+            <span style="font-size: 0.8rem; color: var(--text-dim);">Semua catatan periode sebelumnya</span>
+          </div>
+        </header>
+        <div class="chat-feed" id="archiveFeed" style="flex: 1; overflow-y: auto; background: var(--bg); padding-bottom: 30px;"></div>
+      </section>
+    </div>
+
+    <dialog class="reset-dialog" id="resetDialog">
+      <form method="dialog" class="dialog-card">
+        <h2>Refresh periode?</h2>
+        <p>
+          Pendapatan dan pengeluaran periode ini akan masuk arsip dan total dimulai dari nol.
+          Tabungan privat tetap tersimpan.
+        </p>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel" type="submit">Batal</button>
+          <button class="danger-button" id="confirmRefreshButton" value="confirm" type="button">
+            Ya, refresh
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="reset-dialog" id="profileDialog">
+      <form method="dialog" class="dialog-card" id="profileForm" style="max-width: 320px; width: 100%;">
+        <h2>Pengaturan Profil</h2>
+        
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 12px 0;">
+          <div id="profileAvatarPreview" class="avatar" style="width: 64px; height: 64px; font-size: 24px; background-size: cover; background-position: center;">?</div>
+          <label class="secondary-button" style="padding: 4px 12px; cursor: pointer; font-size: 0.8rem;">
+            Ubah Foto
+            <input type="file" id="profileAvatarInput" accept="image/*" style="display: none;" />
+          </label>
+        </div>
+
+        <label for="profileNameInput" class="field-label" style="text-align: left; display: block; margin-top: 12px;">Nama Tampilan</label>
+        <input id="profileNameInput" type="text" style="width: 100%; margin-top: 4px;" required />
+
+        <label for="profileRoleInput" class="field-label" style="text-align: left; display: block; margin-top: 12px;">Peran (Suami, Istri, dll)</label>
+        <input id="profileRoleInput" type="text" style="width: 100%; margin-top: 4px;" placeholder="Contoh: Suami" />
+
+        <label for="profilePaydayInput" class="field-label" style="text-align: left; display: block; margin-top: 12px;">Tanggal Gajian (1-31)</label>
+        <input id="profilePaydayInput" type="number" min="1" max="31" style="width: 100%; margin-top: 4px;" placeholder="Contoh: 25" />
+
+        <label for="profileWaInput" class="field-label" style="text-align: left; display: block; margin-top: 12px;">Nomor WhatsApp</label>
+        <input id="profileWaInput" type="text" inputmode="numeric" style="width: 100%; margin-top: 4px;" placeholder="Contoh: 628123456789" />
+
+        <div class="dialog-actions" style="margin-top: 20px;">
+          <button class="secondary-button" value="cancel" type="button" onclick="document.getElementById('profileDialog').close()">Batal</button>
+          <button class="primary-button" type="submit">Simpan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registered', reg))
+            .catch(err => console.error('Service Worker registration failed', err));
+        });
+      }
+    </script>
+    <script type="module" src="./app.js"></script>
+  </body>
+</html>

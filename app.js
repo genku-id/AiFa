@@ -92,6 +92,9 @@ const els = {
   closeUpgradeButton: document.querySelector("#closeUpgradeButton"),
 };
 
+let unsubWorkspaces = null;
+let unsubUsers = null;
+
 boot();
 
 function boot() {
@@ -102,9 +105,6 @@ function boot() {
   setupInstallBanner();
   render();
 }
-
-let unsubWorkspaces = null;
-let unsubUsers = null;
 
 function subscribeToData() {
   if (!state.currentEmail) return;

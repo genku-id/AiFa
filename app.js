@@ -100,7 +100,6 @@ function boot() {
   bindEvents();
   migrateInvitesForCurrentUser();
   setupInstallBanner();
-  startHourlyReminder();
   render();
 }
 
@@ -206,10 +205,6 @@ function bindEvents() {
     }
 
     subscribeToData();
-    
-    if ('Notification' in window && window.Notification.permission === 'default') {
-      window.Notification.requestPermission();
-    }
     
     const params = new URLSearchParams(window.location.search);
     const inviteId = params.get("inviteId");
@@ -1019,37 +1014,6 @@ function setupInstallBanner() {
       setTimeout(() => els.installBanner.classList.add("show"), 100);
     }
   });
-}
-
-function startHourlyReminder() {
-  // Check every minute
-  setInterval(() => {
-    if (!state.currentEmail) return;
-    
-    const now = new Date();
-    const hour = now.getHours();
-    const minute = now.getMinutes();
-
-    // Only alert between 7 AM and 10 PM (inclusive), exactly at minute 0
-    if (hour >= 7 && hour <= 22 && minute === 0) {
-      const lastAlert = localStorage.getItem("lastHourlyAlert");
-      const currentAlertId = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}-${hour}`;
-      
-      if (lastAlert !== currentAlertId) {
-        localStorage.setItem("lastHourlyAlert", currentAlertId);
-        
-        // Show local OS notification if allowed
-        if ('Notification' in window && window.Notification.permission === "granted") {
-          new window.Notification("AiFa - Waktunya Mencatat", {
-            body: `Sudah jam ${hour}:00 nih, ada pengeluaran yang perlu dicatat?`,
-            icon: "./icon-192.png"
-          });
-        }
-        
-        showToast(`Sudah jam ${hour}:00 nih, ada pengeluaran yang perlu dicatat?`);
-      }
-    }
-  }, 60 * 1000);
 }
 
 function escapeHtml(value) {

@@ -1119,3 +1119,93 @@ svg {
 .vertical-actions button {
   width: 100%;
 }
+
+/* ===== ONBOARDING STYLES ===== */
+.onboarding-step-indicator {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+.step-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--line);
+  transition: background 0.3s;
+}
+.step-dot.active {
+  background: var(--primary);
+  transform: scale(1.2);
+}
+
+/* Tier cards */
+.tier-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  margin-bottom: 4px;
+}
+.tier-card {
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.tier-card input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.tier-card.selected {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-soft);
+  background: var(--panel);
+}
+.tier-name {
+  font-weight: 700;
+  color: var(--ink);
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+}
+.tier-price {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--primary);
+  margin-bottom: 2px;
+}
+.tier-price-note {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.tier-features {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0 0;
+  font-size: 0.78rem;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* QRIS panel inside onboarding */
+.qris-panel {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  margin-top: 12px;
+}
+.qris-panel .qris-image {
+  max-width: 200px;
+  margin: 8px auto;
+  display: block;
+}
+

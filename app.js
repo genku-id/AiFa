@@ -186,7 +186,10 @@ function bindEvents() {
     // Fetch user from DB first to prevent overwriting existing data
     try {
       const userRef = doc(db, "users", email);
-      const userSnap = await getDoc(userRef);
+      const userSnap = await Promise.race([
+        getDoc(userRef),
+        new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 2000))
+      ]);
       
       if (!userSnap.exists()) {
         const newUser = {
@@ -202,6 +205,14 @@ function bindEvents() {
       }
     } catch (err) {
       console.error("Login fetch error:", err);
+      if (!state.users[email]) {
+        state.users[email] = {
+          email,
+          name,
+          tier: "free",
+          createdAt: new Date().toISOString()
+        };
+      }
     }
 
     subscribeToData();
@@ -881,9 +892,11 @@ function migrateInvitesForCurrentUser() {
   if (!state.currentEmail) return;
 
   Object.values(state.workspaces).forEach((workspace) => {
-    const inviteIndex = workspace.invites.indexOf(state.currentEmail);
+    const invites = workspace.invites || [];
+    const inviteIndex = invites.indexOf(state.currentEmail);
     if (inviteIndex >= 0) {
       workspace.invites.splice(inviteIndex, 1);
+      workspace.members = workspace.members || [];
       if (!workspace.members.includes(state.currentEmail)) {
         workspace.members.push(state.currentEmail);
       }

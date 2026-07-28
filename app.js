@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, doc, onSnapshot, setDoc, collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, onSnapshot, setDoc, collection, query, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw",
@@ -176,14 +176,35 @@ function joinWorkspaceFromInvite(inviteId, inviteName) {
 }
 
 function bindEvents() {
-  els.loginForm.addEventListener("submit", (event) => {
+  els.loginForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const email = normalizeEmail(els.emailInput.value);
     const name = els.nameInput.value.trim() || email.split("@")[0];
 
     if (!email) return;
-    ensureUser(email, name);
     state.currentEmail = email;
+    
+    // Fetch user from DB first to prevent overwriting existing data
+    try {
+      const userRef = doc(db, "users", email);
+      const userSnap = await getDoc(userRef);
+      
+      if (!userSnap.exists()) {
+        const newUser = {
+          email,
+          name,
+          tier: "free",
+          createdAt: new Date().toISOString()
+        };
+        state.users[email] = newUser;
+        await setDoc(userRef, newUser);
+      } else {
+        state.users[email] = userSnap.data();
+      }
+    } catch (err) {
+      console.error("Login fetch error:", err);
+    }
+
     subscribeToData();
     
     if ('Notification' in window && window.Notification.permission === 'default') {
@@ -199,7 +220,7 @@ function bindEvents() {
     }
     
     migrateInvitesForCurrentUser();
-    ensureActiveWorkspace();
+    await ensureActiveWorkspaceAsync();
     saveState();
     render();
   });
@@ -797,6 +818,31 @@ function ensureUser(email, name) {
   // Data will be synced to Firebase when saveState() is called shortly after.
 }
 
+async function ensureActiveWorkspaceAsync() {
+  if (!state.currentEmail) return;
+
+  const workspaces = getUserWorkspaces();
+  const activeIsAvailable = workspaces.some((workspace) => workspace.id === state.activeWorkspaceId);
+
+  // If local list is empty, let's wait a tiny bit for snapshot to arrive (if it exists)
+  if (!workspaces.length) {
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  const updatedWorkspaces = getUserWorkspaces();
+  
+  if (!updatedWorkspaces.length) {
+    const workspace = createWorkspace("Ruang Bersama", state.currentEmail);
+    state.activeWorkspaceId = workspace.id;
+    return;
+  }
+
+  const newActiveIsAvailable = updatedWorkspaces.some((workspace) => workspace.id === state.activeWorkspaceId);
+  if (!newActiveIsAvailable) {
+    state.activeWorkspaceId = updatedWorkspaces[0].id;
+  }
+}
+
 function ensureActiveWorkspace() {
   if (!state.currentEmail) return;
 
@@ -804,9 +850,7 @@ function ensureActiveWorkspace() {
   const activeIsAvailable = workspaces.some((workspace) => workspace.id === state.activeWorkspaceId);
 
   if (!workspaces.length) {
-    const workspace = createWorkspace("Ruang Bersama", state.currentEmail);
-    state.activeWorkspaceId = workspace.id;
-    return;
+    return; // Do not auto-create synchronously, rely on async fetch
   }
 
   if (!activeIsAvailable) {

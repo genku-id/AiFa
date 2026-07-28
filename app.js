@@ -186,8 +186,8 @@ function bindEvents() {
     state.currentEmail = email;
     subscribeToData();
     
-    if (Notification && Notification.permission === 'default') {
-      Notification.requestPermission();
+    if ('Notification' in window && window.Notification.permission === 'default') {
+      window.Notification.requestPermission();
     }
     
     const params = new URLSearchParams(window.location.search);
@@ -774,18 +774,27 @@ function calculateTotals(workspace) {
 }
 
 function ensureUser(email, name) {
+  let modified = false;
+  
   if (!state.users[email]) {
     state.users[email] = {
       email,
       name,
+      tier: "free",
       createdAt: new Date().toISOString(),
     };
-    return;
+    modified = true;
+  } else {
+    if (name && state.users[email].name !== name) {
+      state.users[email].name = name;
+      modified = true;
+    }
+    if (!state.users[email].tier) {
+      state.users[email].tier = "free";
+      modified = true;
+    }
   }
-
-  if (name && state.users[email].name !== name) {
-    state.users[email].name = name;
-  }
+  // Data will be synced to Firebase when saveState() is called shortly after.
 }
 
 function ensureActiveWorkspace() {
@@ -986,8 +995,8 @@ function startHourlyReminder() {
         localStorage.setItem("lastHourlyAlert", currentAlertId);
         
         // Show local OS notification if allowed
-        if (Notification && Notification.permission === "granted") {
-          new Notification("AiFa - Waktunya Mencatat", {
+        if ('Notification' in window && window.Notification.permission === "granted") {
+          new window.Notification("AiFa - Waktunya Mencatat", {
             body: `Sudah jam ${hour}:00 nih, ada pengeluaran yang perlu dicatat?`,
             icon: "./icon-192.png"
           });

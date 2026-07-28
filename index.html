@@ -322,6 +322,31 @@
       </form>
     </dialog>
 
+    <dialog id="upgradeDialog" class="dialog">
+      <div class="dialog-content upgrade-content">
+        <h2>🔥 Upgrade ke Premium</h2>
+        <p>Batas pencatatan bulanan gratis Anda sudah habis (Max 30/periode). Dukung aplikasi ini untuk mendapatkan akses tak terbatas selamanya!</p>
+        
+        <div class="premium-benefits">
+          <ul>
+            <li>✅ Catat pengeluaran tanpa batas</li>
+            <li>✅ Bikin ruang tabungan tanpa batas</li>
+            <li>✅ Berlaku seumur hidup (One-time payment)</li>
+          </ul>
+        </div>
+
+        <div class="qris-container">
+          <p><strong>Cukup bayar Rp50.000 via QRIS:</strong></p>
+          <img src="./qris.jpeg" alt="QRIS Payment" class="qris-image" />
+        </div>
+
+        <div class="dialog-actions vertical-actions">
+          <button class="btn btn-primary" id="confirmUpgradeWA">Konfirmasi Pembayaran (WA)</button>
+          <button class="btn btn-outline" id="closeUpgradeButton">Nanti Saja</button>
+        </div>
+      </div>
+    </dialog>
+
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
     <div class="install-banner hidden" id="installBanner">

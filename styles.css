@@ -1077,3 +1077,45 @@ svg {
   margin-right: 12px;
 }
 
+
+/* Premium Upgrade Modal */
+.upgrade-content {
+  text-align: center;
+}
+.upgrade-content h2 {
+  color: #ff9800;
+  margin-bottom: 10px;
+}
+.premium-benefits {
+  text-align: left;
+  background: var(--bg);
+  padding: 12px;
+  border-radius: 8px;
+  margin: 15px 0;
+  border: 1px solid var(--line);
+}
+.premium-benefits ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.qris-container {
+  margin: 20px 0;
+}
+.qris-image {
+  max-width: 100%;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  box-shadow: var(--shadow);
+}
+.vertical-actions {
+  flex-direction: column;
+  gap: 8px;
+}
+.vertical-actions button {
+  width: 100%;
+}

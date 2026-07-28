@@ -87,6 +87,9 @@ const els = {
   installBanner: document.querySelector("#installBanner"),
   installButton: document.querySelector("#installButton"),
   closeInstallBanner: document.querySelector("#closeInstallBanner"),
+  upgradeDialog: document.querySelector("#upgradeDialog"),
+  confirmUpgradeWA: document.querySelector("#confirmUpgradeWA"),
+  closeUpgradeButton: document.querySelector("#closeUpgradeButton"),
 };
 
 boot();
@@ -282,22 +285,50 @@ function bindEvents() {
     });
   });
 
-  els.transactionForm.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const workspace = getActiveWorkspace();
-    if (!workspace || !state.currentEmail) return;
+  els.closeUpgradeButton?.addEventListener("click", () => {
+    els.upgradeDialog.close();
+  });
+
+  els.confirmUpgradeWA?.addEventListener("click", () => {
+    const waNumber = "6285179813540";
+    const message = `Halo Admin AiFa, saya sudah transfer Rp50.000 untuk upgrade akun AiFa Premium dengan email saya: ${state.currentEmail}`;
+    const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(message)}`;
+    window.open(waLink, "_blank");
+    els.upgradeDialog.close();
+  });
+
+  els.transactionForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!state.activeWorkspaceId) return;
+    
+    const activeWorkspace = state.workspaces[state.activeWorkspaceId];
+    if (!activeWorkspace) return;
+    
+    const activePeriodId = activeWorkspace.activePeriodId || "period_1";
+    
+    // PREMIUM TIER CHECK
+    const currentUser = state.users[state.currentEmail] || {};
+    const isFreeTier = !currentUser.tier || currentUser.tier === "free";
+    
+    if (isFreeTier) {
+      const periodTxCount = (activeWorkspace.transactions || []).filter(t => t.periodId === activePeriodId).length;
+      if (periodTxCount >= 30) {
+        els.upgradeDialog.showModal();
+        return;
+      }
+    }
 
     const note = els.transactionNoteInput.value.trim();
     const amount = parseAmount(els.transactionAmountInput.value);
     if (!note || amount <= 0) return;
 
-    workspace.transactions.push({
+    activeWorkspace.transactions.push({
       id: createId("trx"),
       type: selectedType,
       note,
       amount,
       actorEmail: state.currentEmail,
-      periodId: selectedType === "saving" ? null : workspace.activePeriodId,
+      periodId: selectedType === "saving" ? null : activeWorkspace.activePeriodId,
       createdAt: new Date().toISOString(),
       privateOwnerEmail: selectedType === "saving" ? state.currentEmail : null,
     });

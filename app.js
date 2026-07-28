@@ -911,12 +911,12 @@ function loadState() {
     const raw = localStorage.getItem(STORAGE_KEY);
     const local = raw ? JSON.parse(raw) : {};
     return { 
-      ...structuredClone(DEFAULT_DATA), 
+      ...JSON.parse(JSON.stringify(DEFAULT_DATA)), 
       currentEmail: local.currentEmail || null,
       activeWorkspaceId: local.activeWorkspaceId || null
     };
   } catch {
-    return structuredClone(DEFAULT_DATA);
+    return JSON.parse(JSON.stringify(DEFAULT_DATA));
   }
 }
 
@@ -1018,11 +1018,11 @@ function setupInstallBanner() {
 
 function escapeHtml(value) {
   return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function scrollFeedToBottom() {

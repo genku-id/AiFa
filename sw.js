@@ -1,4 +1,4 @@
-const CACHE_NAME = "aifa-cache-v2";
+const CACHE_NAME = "aifa-cache-v3";
 const urlsToCache = [
   "./",
   "./index.html",

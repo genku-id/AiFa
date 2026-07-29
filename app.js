@@ -54,6 +54,7 @@ const els = {
   wsDropdownLabel: document.querySelector('#wsDropdownLabel'),
   profileBubbleTrigger: document.querySelector('#profileBubbleTrigger'),
   profileBubbleMenu: document.querySelector('#profileBubbleMenu'),
+  workspaceSettingsButton: document.querySelector('#workspaceSettingsButton'),
 };
 
 boot();
@@ -362,12 +363,27 @@ function bindEvents() {
     els.profileBubbleTrigger.classList.toggle('open', isOpen);
   });
 
+  els.wsDropdownPanel && els.wsDropdownPanel.addEventListener('click', e => e.stopPropagation());
+  els.profileBubbleMenu && els.profileBubbleMenu.addEventListener('click', e => e.stopPropagation());
+
   // Close dropdowns on outside click
   document.addEventListener('click', () => {
     closeWsDropdown();
     if (els.profileBubbleMenu) {
       els.profileBubbleMenu.classList.add('hidden');
       els.profileBubbleTrigger.classList.remove('open');
+    }
+  });
+
+  // Workspace Settings
+  els.workspaceSettingsButton && els.workspaceSettingsButton.addEventListener('click', () => {
+    const ws = getActiveWorkspace();
+    if (!ws) return;
+    const newName = prompt('Ganti nama ruang:', ws.name);
+    if (newName && newName.trim() !== '' && newName !== ws.name) {
+      ws.name = newName.trim();
+      saveState();
+      render();
     }
   });
 }

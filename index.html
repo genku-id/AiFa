@@ -123,103 +123,108 @@
       </section>
 
       <!-- ===== MAIN APP ===== -->
-      <section class="main-view hidden" id="mainView">
-        <aside class="sidebar" aria-label="Navigasi ruang">
-
-          <!-- HEADER: Judul aplikasi + Nama ruang + tombol X -->
-          <div class="sidebar-header">
-            <div class="sidebar-header-text">
-              <span class="sidebar-app-name">AiFa</span>
-              <h2 class="sidebar-room-name" id="workspaceTitle">Ruang Keuangan</h2>
-            </div>
-            <button class="icon-button" id="closeSidebarButton" type="button" title="Tutup">
-              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
-            </button>
-          </div>
-
-          <!-- MONEY INFO -->
-          <div class="combined-summary-box new-layout sidebar-money-box" aria-label="Ringkasan total">
-            <div class="summary-top-row">
-              <div class="summary-col income-text"><span class="summary-label">pendapatan</span><strong class="incomeTotal">0k</strong></div>
-              <div class="summary-divider"></div>
-              <div class="summary-col expense-text"><span class="summary-label">pengeluaran</span><strong class="expenseTotal">0k</strong></div>
-              <div class="summary-divider"></div>
-              <div class="summary-col saving-text">
-                <span class="summary-label">tabungan</span>
-                <button class="text-icon-button compact-icon-btn toggleSavingsButton" type="button"><strong class="savingTotal">***</strong></button>
+      <section class="main-view hidden" id="mainV        <aside class="sidebar" aria-label="Navigasi ruang">
+          <div class="sidebar-scroll-area">
+            <!-- HEADER: Judul aplikasi + Nama ruang + tombol X -->
+            <div class="sidebar-header">
+              <div class="sidebar-header-text">
+                <span class="sidebar-app-name">AiFa</span>
+                <h2 class="sidebar-room-name" id="workspaceTitle">Ruang Keuangan</h2>
               </div>
-            </div>
-            <div class="summary-bottom-row balance-text"><span class="summary-label">sisa :</span><strong class="balanceTotal">0k</strong></div>
-          </div>
-
-          <!-- ARSIP (compact pill, kanan) -->
-          <div style="display:flex;justify-content:flex-end;">
-            <button class="archive-pill-btn" id="archiveButton" type="button">
-              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-              Arsip
-            </button>
-          </div>
-
-          <!-- PILIH RUANG (custom dropdown) -->
-          <div class="sidebar-section">
-            <p class="sidebar-section-label">Ruang aktif</p>
-            <div class="ws-dropdown" id="wsDropdown">
-              <button class="ws-dropdown-trigger" id="wsDropdownTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
-                <span id="wsDropdownLabel">Pilih ruang...</span>
-                <svg class="ws-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              <button class="icon-button" id="closeSidebarButton" type="button" title="Tutup">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg>
               </button>
-              <div class="ws-dropdown-panel hidden" id="wsDropdownPanel" role="listbox">
-                <div class="ws-dropdown-list" id="wsDropdownList"></div>
-                <div class="ws-dropdown-sep"></div>
-                <form class="ws-dropdown-add" id="createWorkspaceForm">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                  <input id="workspaceNameInput" type="text" placeholder="Buat ruang baru..." autocomplete="off"/>
-                  <button type="submit">Buat</button>
-                </form>
-              </div>
             </div>
-            <!-- hidden native select kept for JS render compatibility -->
-            <select id="workspaceSelect" style="display:none;"></select>
-          </div>
 
-          <!-- ANGGOTA -->
-          <div class="sidebar-section members-panel">
-            <div class="panel-heading"><span>Anggota ruang</span><span id="memberCount">0</span></div>
-            <div class="member-list" id="memberList"></div>
-          </div>
-
-          <!-- UNDANG -->
-          <button class="sidebar-row-btn invite-btn" id="shareInviteButton" type="button">
-            <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-            Bagikan Link Undangan
-          </button>
-
-          <!-- PROFIL + LOGOUT bubble -->
-          <div class="sidebar-footer">
-            <div class="profile-bubble-wrap" id="profileBubbleWrap">
-              <button class="profile-bubble-trigger" id="profileBubbleTrigger" type="button">
-                <span class="avatar sidebar-avatar" id="userInitials" style="background-size:cover;background-position:center;">AF</span>
-                <div class="sidebar-account-text">
-                  <strong id="userName">Pengguna</strong>
-                  <span id="userEmail">email</span>
+            <!-- MONEY INFO -->
+            <div class="combined-summary-box new-layout sidebar-money-box" aria-label="Ringkasan total">
+              <div class="summary-top-row">
+                <div class="summary-col income-text"><span class="summary-label">pendapatan</span><strong class="incomeTotal">0k</strong></div>
+                <div class="summary-divider"></div>
+                <div class="summary-col expense-text"><span class="summary-label">pengeluaran</span><strong class="expenseTotal">0k</strong></div>
+                <div class="summary-divider"></div>
+                <div class="summary-col saving-text">
+                  <span class="summary-label">tabungan</span>
+                  <button class="text-icon-button compact-icon-btn toggleSavingsButton" type="button"><strong class="savingTotal">***</strong></button>
                 </div>
-                <svg class="bubble-chevron" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+              <div class="summary-bottom-row balance-text"><span class="summary-label">sisa :</span><strong class="balanceTotal">0k</strong></div>
+            </div>
+
+            <!-- ARSIP (compact pill, kanan) -->
+            <div style="display:flex;justify-content:flex-end;">
+              <button class="archive-pill-btn" id="archiveButton" type="button">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+                Arsip
+              </button>
+            </div>
+
+            <!-- PILIH RUANG (custom dropdown) -->
+            <div class="sidebar-section">
+              <p class="sidebar-section-label">Ruang aktif</p>
+              <div class="ws-dropdown" id="wsDropdown">
+                <button class="ws-dropdown-trigger" id="wsDropdownTrigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+                  <span id="wsDropdownLabel">Pilih ruang...</span>
+                  <svg class="ws-chevron" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <div class="ws-dropdown-panel hidden" id="wsDropdownPanel" role="listbox">
+                  <div class="ws-dropdown-list" id="wsDropdownList"></div>
+                  <div class="ws-dropdown-sep"></div>
+                  <form class="ws-dropdown-add" id="createWorkspaceForm">
+                    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                    <input id="workspaceNameInput" type="text" placeholder="Buat ruang baru..." autocomplete="off"/>
+                    <button type="submit">Buat</button>
+                  </form>
+                </div>
+              </div>
+              <!-- hidden native select kept for JS render compatibility -->
+              <select id="workspaceSelect" style="display:none;"></select>
+            </div>
+
+            <!-- AKSI RUANG: UNDANG & PENGATURAN -->
+            <div style="display: flex; gap: 8px;">
+              <button class="sidebar-row-btn invite-btn" id="shareInviteButton" type="button" style="flex: 1; padding: 6px 10px; font-size: 0.75rem; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                Link Undangan
+              </button>
+              <button class="sidebar-row-btn" id="workspaceSettingsButton" type="button" style="flex: 1; padding: 6px 10px; font-size: 0.75rem; justify-content: center;">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                Pengaturan Ruang
+              </button>
+            </div>
+
+            <!-- ANGGOTA -->
+            <div class="sidebar-section members-panel" style="flex: 1;">
+              <div class="panel-heading"><span>Anggota ruang</span><span id="memberCount">0</span></div>
+              <div class="member-list" id="memberList"></div>
+            </div>
+          </div>
+
+          <!-- PROFIL + LOGOUT bubble (fixed di bawah kanan, diperkecil) -->
+          <div class="sidebar-footer" style="display: flex; justify-content: flex-end;">
+            <div class="profile-bubble-wrap" id="profileBubbleWrap" style="max-width: 180px;">
+              <button class="profile-bubble-trigger" id="profileBubbleTrigger" type="button" style="padding: 4px 8px; border-radius: 99px; gap: 6px;">
+                <span class="avatar sidebar-avatar" id="userInitials" style="width: 26px; height: 26px; min-width: 26px; font-size: 0.7rem; background-size:cover; background-position:center;">AF</span>
+                <div class="sidebar-account-text" style="text-align: right;">
+                  <strong id="userName" style="font-size: 0.8rem;">Pengguna</strong>
+                  <!-- userEmail removed to make it smaller -->
+                </div>
+                <svg class="bubble-chevron" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
               <!-- Bubble menu (muncul ke atas) -->
               <div class="profile-bubble-menu hidden" id="profileBubbleMenu">
                 <button class="bubble-item" id="openProfileButton" type="button">
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                   Pengaturan Profil
                 </button>
                 <div class="bubble-sep"></div>
                 <button class="bubble-item danger" id="logoutButton" type="button">
-                  <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 3v18"/></svg>
+                  <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 17l5-5-5-5"/><path d="M15 12H3"/><path d="M21 3v18"/></svg>
                   Keluar Akun
                 </button>
               </div>
             </div>
           </div>
-
         </aside>
 
         <main class="content">

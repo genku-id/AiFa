@@ -580,12 +580,21 @@ select:focus {
   order: 2;
   display: flex;
   flex-direction: column;
-  gap: 13px;
   margin: 10px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: rgba(255, 253, 247, 0.86);
   box-shadow: var(--soft-shadow);
+  padding: 0;
+  overflow: hidden;
+}
+
+.sidebar-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
   padding: 13px;
 }
 

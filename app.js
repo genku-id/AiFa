@@ -213,10 +213,7 @@ function bindEvents() {
     const btn = document.querySelector('#loginSubmitBtn');
     btn.disabled = true; btn.textContent = 'Memeriksa...';
     try {
-      const userSnap = await Promise.race([
-        getDoc(doc(db, 'users', email)),
-        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000))
-      ]);
+      const userSnap = await getDoc(doc(db, 'users', email));
       if (userSnap.exists()) {
         state.currentEmail = email;
         state.users[email] = userSnap.data();
@@ -236,9 +233,14 @@ function bindEvents() {
         showStep('profile');
       }
     } catch (err) {
-      console.warn('DB check failed:', err);
-      state.currentEmail = email; els.onboardNameInput.value = name; showStep('profile');
-    } finally { btn.disabled = false; btn.textContent = 'Masuk atau Buat Akun'; }
+      console.error(err);
+      if (state.users[email]) {
+        state.currentEmail = email;
+        subscribeToData(); ensureActiveWorkspace(); showStep('dashboard'); render();
+      } else {
+        alert('Gagal memeriksa akun. Pastikan koneksi internet lancar dan coba lagi.');
+      }
+    } finally { btn.disabled = false; btn.textContent = 'Lanjutkan'; }
   });
 
   els.onboardAvatarInput && els.onboardAvatarInput.addEventListener('change', (e) => {

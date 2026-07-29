@@ -465,6 +465,7 @@ function renderHeader() {
   const ws = getActiveWorkspace(); if (!ws) return;
   const p = getActivePeriod(ws);
   els.workspaceTitle.textContent = ws.name;
+  if (els.feedTitle) els.feedTitle.textContent = ws.name;
   els.periodLabel.textContent = p ? 'Periode aktif sejak ' + formatDate(p.startedAt) : 'Periode aktif';
 }
 

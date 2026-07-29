@@ -55,26 +55,83 @@ boot();
 function boot() {
   bindEvents();
   setupInstallBanner();
+  window.addEventListener('popstate', handlePopState);
   if (state.currentEmail && state.users[state.currentEmail]) {
     subscribeToData(); render(); showStep('dashboard');
   } else { showStep('auth'); }
 }
 
-function showStep(step) {
+function showStep(step, pushHistory = true) {
   els.stepAuth.classList.add('hidden');
   els.stepProfile.classList.add('hidden');
   els.stepWorkspace.classList.add('hidden');
   els.authView.classList.remove('hidden');
   els.mainView.classList.add('hidden');
-  if (step === 'auth')      { els.stepAuth.classList.remove('hidden'); return; }
-  if (step === 'profile')   { els.stepProfile.classList.remove('hidden'); return; }
-  if (step === 'workspace') { els.stepWorkspace.classList.remove('hidden'); return; }
+  if (step === 'auth') {
+    els.stepAuth.classList.remove('hidden');
+    if (pushHistory) history.replaceState({ page: 'auth' }, '');
+    return;
+  }
+  if (step === 'profile') {
+    els.stepProfile.classList.remove('hidden');
+    if (pushHistory) history.pushState({ page: 'profile' }, '');
+    return;
+  }
+  if (step === 'workspace') {
+    els.stepWorkspace.classList.remove('hidden');
+    if (pushHistory) history.pushState({ page: 'workspace' }, '');
+    return;
+  }
   if (step === 'dashboard') {
     els.authView.classList.add('hidden');
     els.mainView.classList.remove('hidden');
+    if (pushHistory) history.replaceState({ page: 'dashboard' }, '');
     setTimeout(() => { if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); }, 2000);
   }
 }
+
+function handlePopState(e) {
+  const page = e.state?.page;
+
+  // ARCHIVE open → close it
+  if (page !== 'archive' && !els.archiveView.classList.contains('hidden')) {
+    els.archiveView.classList.add('hidden');
+    return;
+  }
+  if (page === 'archive') {
+    // state is archive but we need to handle back FROM archive
+    els.archiveView.classList.add('hidden');
+    history.pushState({ page: 'dashboard' }, '');
+    return;
+  }
+
+  // SIDEBAR open on mobile → close it
+  if (page === 'sidebar' || (page !== 'sidebar' && els.mainView.classList.contains('mobile-sidebar-open'))) {
+    els.mainView.classList.remove('mobile-sidebar-open');
+    if (page === 'sidebar') history.pushState({ page: 'dashboard' }, '');
+    return;
+  }
+
+  // ONBOARDING steps
+  if (page === 'profile') { showStep('auth', false); return; }
+  if (page === 'workspace') { showStep('profile', false); return; }
+
+  // DASHBOARD or AUTH root — prevent app exit by pushing state back
+  if (page === 'dashboard') {
+    history.pushState({ page: 'dashboard' }, '');
+    return;
+  }
+  if (page === 'auth' || !page) {
+    if (state.currentEmail && state.users[state.currentEmail]) {
+      history.pushState({ page: 'dashboard' }, '');
+      showStep('dashboard', false);
+    } else {
+      history.pushState({ page: 'auth' }, '');
+      showStep('auth', false);
+    }
+  }
+}
+
 
 function subscribeToData() {
   if (!state.currentEmail) return;
@@ -259,11 +316,14 @@ function bindEvents() {
   els.transactionAmountInput.addEventListener('input', () => { const a = parseAmount(els.transactionAmountInput.value); els.transactionAmountInput.value = a > 0 ? formatPlainNumber(a) : ''; });
   els.clearDraftButton.addEventListener('click', () => { els.transactionNoteInput.value = ''; els.transactionAmountInput.value = ''; els.transactionNoteInput.focus(); });
   els.toggleSavingsButton.forEach(b => b.addEventListener('click', () => { showSavings = !showSavings; renderTotals(); }));
-  els.archiveButton.addEventListener('click', () => { els.archiveView.classList.remove('hidden'); renderArchive(); });
+  els.archiveButton.addEventListener('click', () => { els.archiveView.classList.remove('hidden'); renderArchive(); history.pushState({ page: 'archive' }, ''); });
   els.closeArchiveButton && els.closeArchiveButton.addEventListener('click', () => els.archiveView.classList.add('hidden'));
   els.paydayAlertContainer && els.paydayAlertContainer.addEventListener('click', () => { const ws = getActiveWorkspace(); if (!ws) return; if (typeof els.resetDialog.showModal === 'function') { els.resetDialog.showModal(); return; } refreshWorkspace(ws); });
   els.confirmRefreshButton.addEventListener('click', () => { const ws = getActiveWorkspace(); if (ws) refreshWorkspace(ws); els.resetDialog.close(); });
-  els.mobileMenuButton && els.mobileMenuButton.addEventListener('click', () => els.mainView.classList.add('mobile-sidebar-open'));
+  els.mobileMenuButton && els.mobileMenuButton.addEventListener('click', () => {
+    els.mainView.classList.add('mobile-sidebar-open');
+    history.pushState({ page: 'sidebar' }, '');
+  });
   els.closeSidebarButton && els.closeSidebarButton.addEventListener('click', () => els.mainView.classList.remove('mobile-sidebar-open'));
 
   els.openProfileButton && els.openProfileButton.addEventListener('click', () => {

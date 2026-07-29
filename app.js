@@ -46,6 +46,8 @@ const els = {
   installButton: document.querySelector('#installButton'), closeInstallBanner: document.querySelector('#closeInstallBanner'),
   upgradeDialog: document.querySelector('#upgradeDialog'), confirmUpgradeWA: document.querySelector('#confirmUpgradeWA'),
   closeUpgradeButton: document.querySelector('#closeUpgradeButton'),
+  iosBanner: document.querySelector('#iosBanner'),
+  closeIosBanner: document.querySelector('#closeIosBanner'),
 };
 
 boot();
@@ -437,7 +439,35 @@ function saveState() {
 }
 
 function setupInstallBanner() {
-  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; if (!localStorage.getItem('installBannerDismissed')) { els.installBanner.classList.remove('hidden'); setTimeout(() => els.installBanner.classList.add('show'), 100); } });
+  const isIos = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+  if (isStandalone) return; // Already installed, don't show anything
+
+  if (isIos) {
+    // iOS doesn't support beforeinstallprompt — show manual guide
+    if (!localStorage.getItem('iosBannerDismissed')) {
+      setTimeout(() => {
+        els.iosBanner.classList.remove('hidden');
+        setTimeout(() => els.iosBanner.classList.add('show'), 50);
+      }, 3000);
+    }
+    els.closeIosBanner && els.closeIosBanner.addEventListener('click', () => {
+      els.iosBanner.classList.remove('show');
+      setTimeout(() => els.iosBanner.classList.add('hidden'), 300);
+      localStorage.setItem('iosBannerDismissed', 'true');
+    });
+  } else {
+    // Android / Desktop: use native install prompt
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      if (!localStorage.getItem('installBannerDismissed')) {
+        els.installBanner.classList.remove('hidden');
+        setTimeout(() => els.installBanner.classList.add('show'), 100);
+      }
+    });
+  }
 }
 
 function normalizeEmail(v) { return v.trim().toLowerCase(); }

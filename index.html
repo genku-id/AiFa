@@ -334,6 +334,18 @@
       <button class="btn-close" id="closeInstallBanner" aria-label="Tutup" style="color:var(--text-muted);background:none;border:none;font-size:1.25rem;">&times;</button>
     </div>
 
+    <!-- iOS Install Guide -->
+    <div class="install-banner ios-banner hidden" id="iosBanner">
+      <div class="install-banner-content" style="flex:1">
+        <img src="./icon-192.png" alt="AiFa" class="install-banner-icon" />
+        <div class="install-banner-text">
+          <strong>Instal AiFa ke Home Screen</strong>
+          <span>Ketuk <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> lalu pilih <strong>"Add to Home Screen"</strong></span>
+        </div>
+      </div>
+      <button class="btn-close" id="closeIosBanner" aria-label="Tutup" style="color:var(--text-muted);background:none;border:none;font-size:1.25rem;">&times;</button>
+    </div>
+
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {

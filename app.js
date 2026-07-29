@@ -13,7 +13,7 @@ let unsubWorkspaces = null, unsubUsers = null;
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
   stepAuth: document.querySelector('#stepAuth'), stepProfile: document.querySelector('#stepProfile'), stepWorkspace: document.querySelector('#stepWorkspace'),
-  loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'), nameInput: document.querySelector('#nameInput'),
+  loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'),
   onboardProfileForm: document.querySelector('#onboardProfileForm'), onboardAvatarPreview: document.querySelector('#onboardAvatarPreview'),
   onboardAvatarInput: document.querySelector('#onboardAvatarInput'), onboardNameInput: document.querySelector('#onboardNameInput'),
   onboardRoleInput: document.querySelector('#onboardRoleInput'), onboardWaInput: document.querySelector('#onboardWaInput'),
@@ -208,7 +208,7 @@ function bindEvents() {
   els.loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = normalizeEmail(els.emailInput.value);
-    const name = els.nameInput.value.trim() || email.split('@')[0];
+    const name = email.split('@')[0];
     if (!email) return;
     const btn = document.querySelector('#loginSubmitBtn');
     btn.disabled = true; btn.textContent = 'Memeriksa...';

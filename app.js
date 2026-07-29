@@ -48,6 +48,12 @@ const els = {
   closeUpgradeButton: document.querySelector('#closeUpgradeButton'),
   iosBanner: document.querySelector('#iosBanner'),
   closeIosBanner: document.querySelector('#closeIosBanner'),
+  wsDropdownTrigger: document.querySelector('#wsDropdownTrigger'),
+  wsDropdownPanel: document.querySelector('#wsDropdownPanel'),
+  wsDropdownList: document.querySelector('#wsDropdownList'),
+  wsDropdownLabel: document.querySelector('#wsDropdownLabel'),
+  profileBubbleTrigger: document.querySelector('#profileBubbleTrigger'),
+  profileBubbleMenu: document.querySelector('#profileBubbleMenu'),
 };
 
 boot();
@@ -340,7 +346,32 @@ function bindEvents() {
     if (els.profileAvatarPreview.dataset.newAvatar) { user.avatarUrl = els.profileAvatarPreview.dataset.newAvatar; delete els.profileAvatarPreview.dataset.newAvatar; }
     saveState(); render();
   });
+
+  // Custom workspace dropdown toggle
+  els.wsDropdownTrigger && els.wsDropdownTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = els.wsDropdownTrigger.getAttribute('aria-expanded') === 'true';
+    isOpen ? closeWsDropdown() : openWsDropdown();
+  });
+
+  // Profile bubble toggle
+  els.profileBubbleTrigger && els.profileBubbleTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = els.profileBubbleMenu.classList.contains('hidden');
+    els.profileBubbleMenu.classList.toggle('hidden', !isOpen);
+    els.profileBubbleTrigger.classList.toggle('open', isOpen);
+  });
+
+  // Close dropdowns on outside click
+  document.addEventListener('click', () => {
+    closeWsDropdown();
+    if (els.profileBubbleMenu) {
+      els.profileBubbleMenu.classList.add('hidden');
+      els.profileBubbleTrigger.classList.remove('open');
+    }
+  });
 }
+
 function render() {
   if (!state.currentEmail || !state.users[state.currentEmail]) return;
   ensureActiveWorkspace();
@@ -356,10 +387,42 @@ function renderAccount() {
 }
 
 function renderWorkspaces() {
-  const wss = getUserWorkspaces(); els.workspaceSelect.innerHTML = '';
+  const wss = getUserWorkspaces();
+  // Sync hidden native select (used for JS compat)
+  els.workspaceSelect.innerHTML = '';
   wss.forEach(ws => { const o = document.createElement('option'); o.value = ws.id; o.textContent = ws.name; els.workspaceSelect.append(o); });
   if (state.activeWorkspaceId) els.workspaceSelect.value = state.activeWorkspaceId;
+
+  // Render custom dropdown options
+  if (els.wsDropdownList) {
+    els.wsDropdownList.innerHTML = '';
+    wss.forEach(ws => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ws-option' + (ws.id === state.activeWorkspaceId ? ' active' : '');
+      btn.innerHTML = escapeHtml(ws.name) + '<svg class="ws-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+      btn.addEventListener('click', () => {
+        state.activeWorkspaceId = ws.id;
+        saveState(); render(); closeWsDropdown();
+        els.mainView.classList.remove('mobile-sidebar-open');
+      });
+      els.wsDropdownList.append(btn);
+    });
+  }
+  // Update trigger label
+  const active = wss.find(w => w.id === state.activeWorkspaceId);
+  if (els.wsDropdownLabel) els.wsDropdownLabel.textContent = active ? active.name : 'Pilih ruang...';
 }
+
+function openWsDropdown() {
+  els.wsDropdownPanel.classList.remove('hidden');
+  els.wsDropdownTrigger.setAttribute('aria-expanded', 'true');
+}
+function closeWsDropdown() {
+  els.wsDropdownPanel.classList.add('hidden');
+  els.wsDropdownTrigger.setAttribute('aria-expanded', 'false');
+}
+
 
 function renderMembers() {
   const ws = getActiveWorkspace(); if (!ws) return;

@@ -607,6 +607,145 @@ select:focus {
   line-height: 1.2;
 }
 
+/* ── New sidebar layout components ── */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+.sidebar-header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+.sidebar-app-name {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted);
+}
+.sidebar-room-name {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--ink);
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-money-box {
+  margin: 0;
+}
+.sidebar-row-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sidebar-row-btn:hover {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.sidebar-row-btn.invite-btn {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.sidebar-row-btn.invite-btn:hover {
+  background: #1a3529;
+}
+.sidebar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sidebar-section-label {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+.sidebar-account-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--panel-soft);
+}
+.sidebar-account-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.sidebar-avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  font-size: 0.85rem;
+}
+.sidebar-account-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.sidebar-account-text strong,
+.sidebar-account-text span {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.sidebar-account-text span {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.sidebar-logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--expense-soft);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--expense);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sidebar-logout-btn:hover {
+  background: var(--expense-soft);
+}
+
 .icon-button {
   width: 40px;
   min-width: 40px;

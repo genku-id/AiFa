@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
-import { getFirestore, doc, getDoc, onSnapshot, setDoc, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, arrayUnion, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const firebaseConfig = { apiKey: 'AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw', authDomain: 'gen-lang-client-0513521672.firebaseapp.com', projectId: 'gen-lang-client-0513521672', storageBucket: 'gen-lang-client-0513521672.firebasestorage.app', messagingSenderId: '358176864493', appId: '1:358176864493:web:24591e445aa4fe8612f4e4' };
 const app = initializeApp(firebaseConfig);
@@ -94,13 +94,27 @@ function subscribeToData() {
   });
 }
 
-function joinWorkspaceFromInvite(inviteId, inviteName) {
-  if (!state.workspaces[inviteId]) {
-    const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
-    state.workspaces[inviteId] = { id: inviteId, name: inviteName, ownerEmail: 'unknown', members: [state.currentEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
-  } else if (!state.workspaces[inviteId].members.includes(state.currentEmail)) {
-    state.workspaces[inviteId].members.push(state.currentEmail);
-    setDoc(doc(db, 'workspaces', inviteId), state.workspaces[inviteId]).catch(console.error);
+async function joinWorkspaceFromInvite(inviteId, inviteName) {
+  // Safely add member to existing Firestore workspace using arrayUnion
+  try {
+    const wsRef = doc(db, 'workspaces', inviteId);
+    const wsSnap = await getDoc(wsRef);
+    if (wsSnap.exists()) {
+      // Workspace already exists in Firestore — just add this user to members
+      await updateDoc(wsRef, { members: arrayUnion(state.currentEmail) });
+      state.workspaces[inviteId] = wsSnap.data();
+      if (!state.workspaces[inviteId].members.includes(state.currentEmail)) {
+        state.workspaces[inviteId].members.push(state.currentEmail);
+      }
+    } else {
+      // Workspace not in Firestore yet (edge case) — create a minimal placeholder
+      const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
+      const wsData = { id: inviteId, name: inviteName, ownerEmail: 'unknown', members: [state.currentEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
+      await setDoc(wsRef, wsData);
+      state.workspaces[inviteId] = wsData;
+    }
+  } catch (err) {
+    console.error('joinWorkspaceFromInvite error:', err);
   }
   state.activeWorkspaceId = inviteId;
   saveState();

@@ -7,8 +7,10 @@ const db = getFirestore(app);
 const STORAGE_KEY = 'aifa.finance.v2';
 const DEFAULT_DATA = { users: {}, workspaces: {}, currentEmail: null, activeWorkspaceId: null };
 const TYPE_LABELS = { income: 'Pendapatan', expense: 'Pengeluaran', saving: 'Tabungan' };
+const MAX_ROOMS = 5;
 const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
+let pendingNewAccountEmail = null;
 let unsubWorkspaces = null, unsubUsers = null;
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
@@ -55,6 +57,10 @@ const els = {
   profileBubbleTrigger: document.querySelector('#profileBubbleTrigger'),
   profileBubbleMenu: document.querySelector('#profileBubbleMenu'),
   workspaceSettingsButton: document.querySelector('#workspaceSettingsButton'),
+  newAccountDialog: document.querySelector('#newAccountDialog'),
+  newAccountEmail: document.querySelector('#newAccountEmail'),
+  newAccountCreateBtn: document.querySelector('#newAccountCreateBtn'),
+  newAccountCancelBtn: document.querySelector('#newAccountCancelBtn'),
 };
 
 boot();
@@ -63,8 +69,21 @@ function boot() {
   bindEvents();
   setupInstallBanner();
   window.addEventListener('popstate', handlePopState);
-  if (state.currentEmail && state.users[state.currentEmail]) {
-    subscribeToData(); render(); showStep('dashboard');
+  if (state.currentEmail) {
+    getDoc(doc(db, 'users', state.currentEmail)).then(snap => {
+      if (snap.exists()) {
+        state.users[state.currentEmail] = snap.data();
+        subscribeToData(); render(); showStep('dashboard');
+        const p = new URLSearchParams(window.location.search);
+        if (p.get('inviteId') && p.get('inviteName')) {
+          joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName')).then(render);
+        }
+      } else {
+        state.currentEmail = null;
+        saveState();
+        showStep('auth');
+      }
+    }).catch(() => showStep('auth'));
   } else { showStep('auth'); }
 }
 
@@ -166,8 +185,13 @@ async function joinWorkspaceFromInvite(inviteId, inviteName) {
     const wsRef = doc(db, 'workspaces', inviteId);
     const wsSnap = await getDoc(wsRef);
     if (wsSnap.exists()) {
-      // Workspace already exists in Firestore — just add this user to members
-      await updateDoc(wsRef, { members: arrayUnion(state.currentEmail) });
+      if (!wsSnap.data().members.includes(state.currentEmail)) {
+        if (getUserWorkspaces().length >= MAX_ROOMS) {
+          showToast('Maksimal ' + MAX_ROOMS + ' ruang per akun.');
+          return;
+        }
+        await updateDoc(wsRef, { members: arrayUnion(state.currentEmail) });
+      }
       state.workspaces[inviteId] = wsSnap.data();
       if (!state.workspaces[inviteId].members.includes(state.currentEmail)) {
         state.workspaces[inviteId].members.push(state.currentEmail);
@@ -208,7 +232,6 @@ function bindEvents() {
   els.loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = normalizeEmail(els.emailInput.value);
-    const name = email.split('@')[0];
     if (!email) return;
     const btn = document.querySelector('#loginSubmitBtn');
     btn.disabled = true; btn.textContent = 'Memeriksa...';
@@ -219,18 +242,12 @@ function bindEvents() {
         state.users[email] = userSnap.data();
         saveState(); subscribeToData();
         const p = new URLSearchParams(window.location.search);
-        if (p.get('inviteId') && p.get('inviteName')) joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName'));
+        if (p.get('inviteId') && p.get('inviteName')) joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName')).then(render);
         ensureActiveWorkspace(); showStep('dashboard'); render();
       } else {
-        state.currentEmail = email;
-        els.onboardNameInput.value = name;
-        const p = new URLSearchParams(window.location.search);
-        if (p.get('inviteId')) {
-          sessionStorage.setItem('pendingInviteId', p.get('inviteId'));
-          sessionStorage.setItem('pendingInviteName', p.get('inviteName') || '');
-          window.history.replaceState({}, document.title, window.location.pathname);
-        }
-        showStep('profile');
+        pendingNewAccountEmail = email;
+        els.newAccountEmail.textContent = email;
+        els.newAccountDialog.showModal();
       }
     } catch (err) {
       console.error(err);
@@ -241,6 +258,15 @@ function bindEvents() {
         alert('Gagal memeriksa akun. Pastikan koneksi internet lancar dan coba lagi.');
       }
     } finally { btn.disabled = false; btn.textContent = 'Lanjutkan'; }
+  });
+
+  els.newAccountCreateBtn && els.newAccountCreateBtn.addEventListener('click', () => {
+    els.newAccountDialog.close();
+    beginNewAccount(pendingNewAccountEmail);
+  });
+  els.newAccountCancelBtn && els.newAccountCancelBtn.addEventListener('click', () => {
+    pendingNewAccountEmail = null;
+    els.emailInput.focus();
   });
 
   els.onboardAvatarInput && els.onboardAvatarInput.addEventListener('change', (e) => {
@@ -278,9 +304,10 @@ function bindEvents() {
     e.preventDefault();
     const roomName = els.onboardRoomNameInput.value.trim() || 'Ruang Bersama';
     const chosenTier = (document.querySelector('input[name="tier"]:checked') || {}).value || 'free';
+    const ws = createWorkspace(roomName, state.currentEmail);
+    if (!ws) return;
     state.users[state.currentEmail].tier = chosenTier === 'premium' ? 'pending' : 'free';
     setDoc(doc(db, 'users', state.currentEmail), state.users[state.currentEmail]).catch(console.error);
-    const ws = createWorkspace(roomName, state.currentEmail);
     state.activeWorkspaceId = ws.id;
     saveState(); subscribeToData(); showStep('dashboard'); render();
     showToast('Ruang "' + roomName + '" berhasil dibuat!');
@@ -292,13 +319,13 @@ function bindEvents() {
     unsubWorkspaces = null; unsubUsers = null;
     Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
     showSavings = false; saveState(); showStep('auth');
-    els.emailInput.value = ''; els.nameInput.value = '';
+    els.emailInput.value = '';
   });
 
   els.closeInstallBanner && els.closeInstallBanner.addEventListener('click', () => { els.installBanner.classList.remove('show'); setTimeout(() => els.installBanner.classList.add('hidden'), 300); localStorage.setItem('installBannerDismissed', 'true'); });
   els.installButton && els.installButton.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { els.installBanner.classList.remove('show'); setTimeout(() => els.installBanner.classList.add('hidden'), 300); } deferredPrompt = null; });
   els.workspaceSelect.addEventListener('change', () => { state.activeWorkspaceId = els.workspaceSelect.value; saveState(); render(); els.mainView.classList.remove('mobile-sidebar-open'); });
-  els.createWorkspaceForm.addEventListener('submit', (e) => { e.preventDefault(); const name = els.workspaceNameInput.value.trim(); if (!name || !state.currentEmail) return; const ws = createWorkspace(name, state.currentEmail); state.activeWorkspaceId = ws.id; els.workspaceNameInput.value = ''; saveState(); render(); closeWsDropdown(); showToast('Ruang ' + ws.name + ' dibuat.'); els.mainView.classList.remove('mobile-sidebar-open'); });
+  els.createWorkspaceForm.addEventListener('submit', (e) => { e.preventDefault(); const name = els.workspaceNameInput.value.trim(); if (!name || !state.currentEmail) return; const ws = createWorkspace(name, state.currentEmail); if (!ws) return; state.activeWorkspaceId = ws.id; els.workspaceNameInput.value = ''; saveState(); render(); closeWsDropdown(); showToast('Ruang ' + ws.name + ' dibuat.'); els.mainView.classList.remove('mobile-sidebar-open'); });
 
   els.shareInviteButton && els.shareInviteButton.addEventListener('click', async () => {
     const ws = getActiveWorkspace(); if (!ws) return;
@@ -390,6 +417,19 @@ function bindEvents() {
   });
 }
 
+function beginNewAccount(email) {
+  if (!email) return;
+  state.currentEmail = email;
+  els.onboardNameInput.value = email.split('@')[0];
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('inviteId')) {
+    sessionStorage.setItem('pendingInviteId', p.get('inviteId'));
+    sessionStorage.setItem('pendingInviteName', p.get('inviteName') || '');
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+  showStep('profile');
+}
+
 function render() {
   if (!state.currentEmail || !state.users[state.currentEmail]) return;
   ensureActiveWorkspace();
@@ -418,7 +458,12 @@ function renderWorkspaces() {
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'ws-option' + (ws.id === state.activeWorkspaceId ? ' active' : '');
-      btn.innerHTML = escapeHtml(ws.name) + '<svg class="ws-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+      const shared = (ws.members || []).length > 1;
+      const owner = state.users[ws.ownerEmail];
+      const sub = shared
+        ? (owner && owner.email !== state.currentEmail ? 'Bersama dengan ' + owner.name : 'Bersama')
+        : 'Pribadi';
+      btn.innerHTML = '<span class="ws-option-text">' + escapeHtml(ws.name) + '<small class="ws-sub">' + escapeHtml(sub) + '</small></span>' + '<svg class="ws-check" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
       btn.addEventListener('click', () => {
         state.activeWorkspaceId = ws.id;
         saveState(); render(); closeWsDropdown();
@@ -556,6 +601,10 @@ function ensureActiveWorkspace() {
 }
 
 function createWorkspace(name, ownerEmail) {
+  if (getUserWorkspaces().length >= MAX_ROOMS) {
+    showToast('Maksimal ' + MAX_ROOMS + ' ruang per akun.');
+    return null;
+  }
   const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
   const ws = { id: createId('room'), name, ownerEmail, members: [ownerEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
   state.workspaces[ws.id] = ws;

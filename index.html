@@ -327,6 +327,18 @@
       </form>
     </dialog>
 
+    <dialog class="reset-dialog" id="newAccountDialog">
+      <form method="dialog" class="dialog-card">
+        <h2>Akun tidak ditemukan</h2>
+        <p>Belum ada akun dengan email <strong id="newAccountEmail" style="color:var(--ink);"></strong>.</p>
+        <p style="font-size:0.85rem;color:var(--muted);">Buat akun baru dengan email ini, atau batal untuk memeriksa kembali penulisan email.</p>
+        <div class="dialog-actions">
+          <button class="secondary-button" id="newAccountCancelBtn" value="cancel" type="submit">Batal</button>
+          <button class="primary-button" id="newAccountCreateBtn" value="confirm" type="button">Buat Akun Baru</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog id="upgradeDialog" class="dialog">
       <div class="dialog-content upgrade-content">
         <h2>&#128293; Upgrade ke Premium</h2>

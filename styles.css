@@ -1453,6 +1453,18 @@ svg {
   width: 100%;
   transition: background 0.1s;
 }
+.ws-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.ws-option-text .ws-sub {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-weight: 400;
+}
+.ws-option.active .ws-sub { color: var(--primary); }
+
 .ws-option:hover { background: var(--primary-soft); }
 .ws-option.active { background: var(--primary-soft); color: var(--primary); font-weight: 700; }
 .ws-option .ws-check { margin-left: auto; color: var(--primary); opacity: 0; }

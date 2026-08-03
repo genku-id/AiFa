@@ -8,6 +8,20 @@ const STORAGE_KEY = 'aifa.finance.v2';
 const DEFAULT_DATA = { users: {}, workspaces: {}, currentEmail: null, activeWorkspaceId: null };
 const TYPE_LABELS = { income: 'Pendapatan', expense: 'Pengeluaran', saving: 'Tabungan' };
 const MAX_ROOMS = 5;
+const EMAIL_TYPOS = {
+  'gmai.com': 'gmail.com',
+  'gmal.com': 'gmail.com',
+  'gmial.com': 'gmail.com',
+  'gmaill.com': 'gmail.com',
+  'gmail.co': 'gmail.com',
+  'gmail.co.id': 'gmail.com',
+  'gmail.comm': 'gmail.com',
+  'gmail.com.': 'gmail.com',
+  'gmaill.com': 'gmail.com',
+  'yahoo.co': 'yahoo.com',
+  'yahoo.co.id': 'yahoo.com',
+  'yahho.com': 'yahoo.com',
+};
 const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
@@ -59,8 +73,10 @@ const els = {
   workspaceSettingsButton: document.querySelector('#workspaceSettingsButton'),
   newAccountDialog: document.querySelector('#newAccountDialog'),
   newAccountEmail: document.querySelector('#newAccountEmail'),
+  newAccountHint: document.querySelector('#newAccountHint'),
   newAccountCreateBtn: document.querySelector('#newAccountCreateBtn'),
   newAccountCancelBtn: document.querySelector('#newAccountCancelBtn'),
+  newAccountFixBtn: document.querySelector('#newAccountFixBtn'),
 };
 
 boot();
@@ -256,6 +272,16 @@ function bindEvents() {
       } else {
         pendingNewAccountEmail = email;
         els.newAccountEmail.textContent = email;
+        const parts = email.split('@');
+        const fix = parts.length === 2 ? EMAIL_TYPOS[parts[1].toLowerCase()] : null;
+        if (fix && els.newAccountFixBtn) {
+          const fixed = parts[0] + '@' + fix;
+          els.newAccountFixBtn.textContent = 'Maksudnya ' + fixed + '?';
+          els.newAccountFixBtn.dataset.fixedEmail = fixed;
+          els.newAccountFixBtn.classList.remove('hidden');
+        } else if (els.newAccountFixBtn) {
+          els.newAccountFixBtn.classList.add('hidden');
+        }
         els.newAccountDialog.showModal();
       }
     } catch (err) {
@@ -276,6 +302,15 @@ function bindEvents() {
   els.newAccountCancelBtn && els.newAccountCancelBtn.addEventListener('click', () => {
     pendingNewAccountEmail = null;
     els.emailInput.focus();
+  });
+  els.newAccountFixBtn && els.newAccountFixBtn.addEventListener('click', () => {
+    const fixed = els.newAccountFixBtn.dataset.fixedEmail;
+    els.newAccountDialog.close();
+    pendingNewAccountEmail = null;
+    if (fixed) {
+      els.emailInput.value = fixed;
+      els.emailInput.focus();
+    }
   });
 
   els.onboardAvatarInput && els.onboardAvatarInput.addEventListener('change', (e) => {

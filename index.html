@@ -331,8 +331,9 @@
       <form method="dialog" class="dialog-card">
         <h2>Akun tidak ditemukan</h2>
         <p>Belum ada akun dengan email <strong id="newAccountEmail" style="color:var(--ink);"></strong>.</p>
-        <p style="font-size:0.85rem;color:var(--muted);">Buat akun baru dengan email ini, atau batal untuk memeriksa kembali penulisan email.</p>
-        <div class="dialog-actions">
+        <p id="newAccountHint" style="font-size:0.85rem;color:var(--muted);">Buat akun baru dengan email ini, atau batal untuk memeriksa kembali penulisan email.</p>
+        <div class="dialog-actions" style="flex-wrap:wrap;">
+          <button class="secondary-button hidden" id="newAccountFixBtn" value="fix" type="button"></button>
           <button class="secondary-button" id="newAccountCancelBtn" value="cancel" type="submit">Batal</button>
           <button class="primary-button" id="newAccountCreateBtn" value="confirm" type="button">Buat Akun Baru</button>
         </div>

@@ -83,7 +83,11 @@ function boot() {
         saveState();
         showStep('auth');
       }
-    }).catch(() => showStep('auth'));
+    }).catch((err) => {
+      console.error('boot getUser error:', err);
+      showToast('Gagal terhubung ke server. Cek koneksi & izin Firestore.');
+      showStep('auth');
+    });
   } else { showStep('auth'); }
 }
 
@@ -170,12 +174,17 @@ function subscribeToData() {
       if (ch.type === 'removed') delete state.workspaces[ch.doc.id];
     });
     render();
+  }, (err) => {
+    console.error('Gagal memuat ruang:', err);
+    showToast('Gagal memuat ruang dari server. Cek koneksi & izin Firestore.');
   });
   unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
     snap.docChanges().forEach((ch) => {
       if (ch.type === 'added' || ch.type === 'modified') state.users[ch.doc.id] = ch.doc.data();
     });
     render();
+  }, (err) => {
+    console.error('Gagal memuat data pengguna:', err);
   });
 }
 
@@ -278,7 +287,10 @@ function bindEvents() {
     e.preventDefault();
     const userObj = { email: state.currentEmail, name: els.onboardNameInput.value.trim() || state.currentEmail.split('@')[0], role: els.onboardRoleInput.value.trim() || null, wa: els.onboardWaInput.value.trim() || null, avatarUrl: els.onboardAvatarPreview.dataset.avatar || null, tier: 'free', createdAt: new Date().toISOString() };
     state.users[state.currentEmail] = userObj;
-    setDoc(doc(db, 'users', state.currentEmail), userObj).catch(console.error);
+    setDoc(doc(db, 'users', state.currentEmail), userObj).catch((err) => {
+      console.error('createUser error:', err);
+      showToast('Gagal menyimpan akun ke server: ' + (err.code || err.message));
+    });
     saveState();
     const pid = sessionStorage.getItem('pendingInviteId'), pname = sessionStorage.getItem('pendingInviteName');
     if (pid) {
@@ -438,10 +450,13 @@ function render() {
 
 function renderAccount() {
   const user = state.users[state.currentEmail]; if (!user) return;
-  els.userName.textContent = user.name; els.userEmail.textContent = user.email;
+  els.userName.textContent = user.name;
+  if (els.userEmail) els.userEmail.textContent = user.email;
   const el = document.getElementById('userInitials');
-  if (user.avatarUrl) { el.style.backgroundImage = 'url(' + user.avatarUrl + ')'; el.textContent = ''; }
-  else { el.style.backgroundImage = 'none'; el.textContent = initials(user.name || user.email); }
+  if (el) {
+    if (user.avatarUrl) { el.style.backgroundImage = 'url(' + user.avatarUrl + ')'; el.textContent = ''; }
+    else { el.style.backgroundImage = 'none'; el.textContent = initials(user.name || user.email); }
+  }
 }
 
 function renderWorkspaces() {
@@ -608,7 +623,13 @@ function createWorkspace(name, ownerEmail) {
   const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
   const ws = { id: createId('room'), name, ownerEmail, members: [ownerEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
   state.workspaces[ws.id] = ws;
-  setDoc(doc(db, 'workspaces', ws.id), ws).catch(console.error);
+  setDoc(doc(db, 'workspaces', ws.id), ws).catch((err) => {
+    console.error('createWorkspace error:', err);
+    delete state.workspaces[ws.id];
+    if (state.activeWorkspaceId === ws.id) state.activeWorkspaceId = null;
+    render();
+    showToast('Gagal menyimpan ruang ke server: ' + (err.code || err.message));
+  });
   return ws;
 }
 

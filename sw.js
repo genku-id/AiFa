@@ -1,4 +1,4 @@
-const CACHE_NAME = "aifa-cache-v14";
+const CACHE_NAME = "aifa-cache-v15";
 const urlsToCache = [
   "./",
   "./index.html",
@@ -30,6 +30,7 @@ self.addEventListener("activate", event => {
 });
 
 self.addEventListener("fetch", event => {
+  if (event.request.method !== "GET") return;
   event.respondWith(
     fetch(event.request).then(response => {
       // If network fetch is successful, clone and update cache

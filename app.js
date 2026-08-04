@@ -29,6 +29,7 @@ let pendingSetPasswordEmail = null;
 let demoMode = false;
 const DEMO_EMAIL = 'fulan@demo.aifa';
 let confirmAction = null;
+let periodRecoveryPrompted = false;
 let longPressTimer = null;
 let contextTargetId = null;
 let editingTrxId = null;
@@ -478,6 +479,7 @@ function exitDemo() {
   if (els.demoBanner) els.demoBanner.classList.add('hidden');
   Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
   showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
+  periodRecoveryPrompted = false;
   saveState();
   showStep('auth');
 }
@@ -679,6 +681,7 @@ function bindEvents() {
     if (els.demoBanner) els.demoBanner.classList.add('hidden');
     Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
     showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
+    periodRecoveryPrompted = false;
     saveState(); showStep('auth');
     els.emailInput.value = '';
     if (els.passwordInput) { els.passwordInput.value = ''; if (els.loginError) els.loginError.style.display = 'none'; }
@@ -979,6 +982,37 @@ function render() {
   if (!state.currentEmail || !state.users[state.currentEmail]) return;
   ensureActiveWorkspace();
   renderAccount(); renderWorkspaces(); renderMembers(); renderHeader(); renderTotals(); renderTypeSwitch(); renderFeed();
+  maybeSuggestPeriodRecovery();
+}
+
+function findPeriodRecovery(ws) {
+  if (!ws || !ws.periods || ws.periods.length < 2) return null;
+  const hasTx = (pid) => (ws.transactions || []).some(t => t.periodId === pid);
+  const lastIdx = ws.periods.length - 1;
+  if (ws.activePeriodId !== ws.periods[lastIdx].id) return null;
+  if (hasTx(ws.activePeriodId)) return null;
+  const toRemove = [];
+  let idx = lastIdx;
+  while (idx > 0 && !hasTx(ws.periods[idx].id)) { toRemove.push(ws.periods[idx].id); idx--; }
+  if (!toRemove.includes(ws.activePeriodId)) return null;
+  const target = ws.periods[idx];
+  if (!target || !target.endedAt || !hasTx(target.id)) return null;
+  return { removeIds: toRemove, restoreId: target.id };
+}
+
+function maybeSuggestPeriodRecovery() {
+  if (periodRecoveryPrompted) return;
+  if (els.authView && !els.authView.classList.contains('hidden')) return;
+  const ws = getActiveWorkspace(); if (!ws) return;
+  const rec = findPeriodRecovery(ws); if (!rec) return;
+  periodRecoveryPrompted = true;
+  openConfirm('Pulihkan periode sebelumnya?', 'Periode aktif saat ini kosong dan tampaknya terbuat tidak sengaja. Catatan periode sebelumnya (termasuk pengeluaran semua anggota) akan dikembalikan lagi.', 'Pulihkan', () => {
+    const target = ws.periods.find(p => p.id === rec.restoreId);
+    if (target) target.endedAt = null;
+    ws.periods = ws.periods.filter(p => !rec.removeIds.includes(p.id));
+    ws.activePeriodId = rec.restoreId;
+    saveState(); render(); showToast('Periode sebelumnya dipulihkan.');
+  });
 }
 
 function renderAccount() {

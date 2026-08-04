@@ -78,6 +78,9 @@ const els = {
   newAccountCancelBtn: document.querySelector('#newAccountCancelBtn'),
   newAccountFixBtn: document.querySelector('#newAccountFixBtn'),
   roomSettingsDialog: document.querySelector('#roomSettingsDialog'),
+  roomSettingsNameDisplay: document.querySelector('#roomSettingsNameDisplay'),
+  roomSettingsNameText: document.querySelector('#roomSettingsNameText'),
+  roomSettingsNameEditBtn: document.querySelector('#roomSettingsNameEditBtn'),
   roomSettingsNameForm: document.querySelector('#roomSettingsNameForm'),
   roomSettingsNameInput: document.querySelector('#roomSettingsNameInput'),
   roomSettingsMemberList: document.querySelector('#roomSettingsMemberList'),
@@ -472,6 +475,13 @@ function bindEvents() {
   // Workspace Settings
   els.workspaceSettingsButton && els.workspaceSettingsButton.addEventListener('click', openRoomSettings);
 
+  els.roomSettingsNameEditBtn && els.roomSettingsNameEditBtn.addEventListener('click', () => {
+    if (els.roomSettingsNameDisplay) els.roomSettingsNameDisplay.style.display = 'none';
+    els.roomSettingsNameForm.style.display = 'flex';
+    els.roomSettingsNameInput.focus();
+    els.roomSettingsNameInput.select();
+  });
+
   els.roomSettingsNameForm && els.roomSettingsNameForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const ws = getActiveWorkspace(); if (!ws) return;
@@ -479,6 +489,9 @@ function bindEvents() {
     if (!newName || newName === ws.name) return;
     ws.name = newName;
     saveState(); render();
+    if (els.roomSettingsNameText) els.roomSettingsNameText.textContent = newName;
+    els.roomSettingsNameForm.style.display = 'none';
+    if (els.roomSettingsNameDisplay) els.roomSettingsNameDisplay.style.display = 'flex';
     showToast('Nama ruang disimpan.');
   });
 
@@ -631,7 +644,10 @@ function renderMembers() {
 
 function openRoomSettings() {
   const ws = getActiveWorkspace(); if (!ws) return;
+  if (els.roomSettingsNameText) els.roomSettingsNameText.textContent = ws.name;
   els.roomSettingsNameInput.value = ws.name;
+  els.roomSettingsNameForm.style.display = 'none';
+  if (els.roomSettingsNameDisplay) els.roomSettingsNameDisplay.style.display = 'flex';
   renderRoomSettingsMembers(ws);
   renderRoomWishlist(ws);
   if (typeof els.roomSettingsDialog.showModal === 'function') els.roomSettingsDialog.showModal();

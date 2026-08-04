@@ -331,7 +331,11 @@
       <div class="dialog-card">
         <h2>Pengaturan Ruang</h2>
         <label class="field-label" style="display:block;margin-top:12px;text-align:left;">Nama ruang</label>
-        <form id="roomSettingsNameForm" style="display:flex;gap:8px;margin-top:4px;">
+        <div id="roomSettingsNameDisplay" style="display:flex;align-items:center;gap:8px;margin-top:4px;color:var(--ink);">
+          <span id="roomSettingsNameText" style="flex:1;font-size:0.95rem;font-weight:700;"></span>
+          <button class="secondary-button" id="roomSettingsNameEditBtn" type="button" style="white-space:nowrap;">Edit</button>
+        </div>
+        <form id="roomSettingsNameForm" style="display:none;gap:8px;margin-top:4px;">
           <input id="roomSettingsNameInput" type="text" style="flex:1;" required />
           <button class="primary-button" type="submit" style="white-space:nowrap;">Simpan</button>
         </form>

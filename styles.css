@@ -771,6 +771,7 @@ select:focus {
   margin-top: auto;
   padding: 10px 12px 12px;
   border-top: 1px solid var(--line);
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
 }
 .sidebar-logout-btn {
   display: flex;
@@ -1086,6 +1087,7 @@ html {
   height: 100vh;
   height: 100dvh;
   min-height: 100vh;
+  min-height: 100dvh;
   border-radius: 0;
 }
 

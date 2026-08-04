@@ -686,6 +686,9 @@ select:focus {
   gap: 13px;
   padding: 13px;
 }
+.sidebar-scroll-area > :not(.members-panel) {
+  flex-shrink: 0;
+}
 
 .sidebar-top,
 .panel-heading,
@@ -911,6 +914,7 @@ select:focus {
 .members-panel {
   display: flex;
   flex-direction: column;
+  flex: 0 1 auto;
   min-height: 0;
   overflow: hidden;
 }

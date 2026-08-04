@@ -276,17 +276,37 @@
             </div>
             <div class="chat-feed" id="chatFeed"></div>
             <form class="composer" id="transactionForm">
-              <div class="type-switch" role="tablist" aria-label="Jenis transaksi">
-                <button class="switch-option active" data-type="expense" type="button">Pengeluaran</button>
-                <button class="switch-option" data-type="income" type="button">Pendapatan</button>
-                <button class="switch-option private" data-type="saving" type="button">Tabungan</button>
-              </div>
-              <div class="composer-row">
-                <input id="transactionNoteInput" type="text" placeholder="Contoh: makan siang, gaji, tabung motor" required />
-                <input id="transactionAmountInput" type="text" inputmode="numeric" placeholder="Nominal" required />
-                <button class="send-button" type="submit" title="Kirim">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+              <div class="composer-mode-bar" role="tablist" aria-label="Mode komposer">
+                <button class="composer-mode-btn active" data-mode="finance" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                  Keuangan
                 </button>
+                <button class="composer-mode-btn" data-mode="chat" type="button">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Chat
+                </button>
+              </div>
+              <div id="composerFinanceBox">
+                <div class="type-switch" role="tablist" aria-label="Jenis transaksi">
+                  <button class="switch-option active" data-type="expense" type="button">Pengeluaran</button>
+                  <button class="switch-option" data-type="income" type="button">Pendapatan</button>
+                  <button class="switch-option private" data-type="saving" type="button">Tabungan</button>
+                </div>
+                <div class="composer-row">
+                  <input id="transactionNoteInput" type="text" placeholder="Contoh: makan siang, gaji, tabung motor" required />
+                  <input id="transactionAmountInput" type="text" inputmode="numeric" placeholder="Nominal" required />
+                  <button class="send-button" type="submit" title="Kirim">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                  </button>
+                </div>
+              </div>
+              <div id="composerChatBox" class="hidden">
+                <div class="composer-row">
+                  <input id="chatInput" type="text" placeholder="Ketik pesan..." required />
+                  <button class="send-button" type="submit" title="Kirim">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                  </button>
+                </div>
               </div>
             </form>
           </section>
@@ -481,6 +501,18 @@
         <input id="editAmountInput" type="text" inputmode="numeric" style="margin-top:4px;" required />
         <div class="dialog-actions">
           <button class="secondary-button" type="button" onclick="document.getElementById('editTransactionDialog').close()">Batal</button>
+          <button class="primary-button" type="submit">Simpan</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="reset-dialog" id="editChatDialog">
+      <form class="dialog-card" id="editChatForm">
+        <h2>Edit Pesan</h2>
+        <label class="field-label" style="display:block;margin-top:12px;text-align:left;">Pesan</label>
+        <input id="editChatInput" type="text" style="margin-top:4px;" required />
+        <div class="dialog-actions">
+          <button class="secondary-button" type="button" onclick="document.getElementById('editChatDialog').close()">Batal</button>
           <button class="primary-button" type="submit">Simpan</button>
         </div>
       </form>

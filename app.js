@@ -32,6 +32,9 @@ let confirmAction = null;
 let longPressTimer = null;
 let contextTargetId = null;
 let editingTrxId = null;
+let editingChatId = null;
+let contextKind = 'finance';
+let composerMode = localStorage.getItem('aifa.composer.mode') === 'chat' ? 'chat' : 'finance';
 let editType = 'expense';
 let trxMenuOpenedAt = 0;
 let unsubWorkspaces = null, unsubUsers = null;
@@ -59,6 +62,8 @@ const els = {
   archiveButton: document.querySelector('#archiveButton'),
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
+  composerModeBtns: [...document.querySelectorAll('.composer-mode-btn')], composerFinanceBox: document.querySelector('#composerFinanceBox'), composerChatBox: document.querySelector('#composerChatBox'), chatInput: document.querySelector('#chatInput'),
+  editChatDialog: document.querySelector('#editChatDialog'), editChatForm: document.querySelector('#editChatForm'), editChatInput: document.querySelector('#editChatInput'),
   resetDialog: document.querySelector('#resetDialog'), confirmRefreshButton: document.querySelector('#confirmRefreshButton'),
   toast: document.querySelector('#toast'), switchOptions: [...document.querySelectorAll('.switch-option')],
   mobileMenuButton: document.querySelector('#mobileMenuButton'), closeSidebarButton: document.querySelector('#closeSidebarButton'),
@@ -277,7 +282,7 @@ function subscribeToData() {
   const wq = query(collection(db, 'workspaces'), where('members', 'array-contains', state.currentEmail));
   unsubWorkspaces = onSnapshot(wq, (snap) => {
     snap.docChanges().forEach((ch) => {
-      if (ch.type === 'added' || ch.type === 'modified') state.workspaces[ch.doc.id] = ch.doc.data();
+      if (ch.type === 'added' || ch.type === 'modified') { state.workspaces[ch.doc.id] = ch.doc.data(); pruneChat(state.workspaces[ch.doc.id]); }
       if (ch.type === 'removed') delete state.workspaces[ch.doc.id];
     });
     render();
@@ -315,7 +320,7 @@ async function joinWorkspaceFromInvite(inviteId, inviteName) {
     } else {
       // Workspace not in Firestore yet (edge case) — create a minimal placeholder
       const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
-      const wsData = { id: inviteId, name: inviteName, ownerEmail: 'unknown', members: [state.currentEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
+      const wsData = { id: inviteId, name: inviteName, ownerEmail: 'unknown', members: [state.currentEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], chat: [], createdAt: new Date().toISOString() };
       await setDoc(wsRef, wsData);
       state.workspaces[inviteId] = wsData;
     }
@@ -378,7 +383,10 @@ function buildDemoData() {
     const p1 = { id: id + '-p1', label: 'Periode 1', startedAt: new Date(now - 70 * day).toISOString(), endedAt: new Date(now - 40 * day).toISOString() };
     const p2 = { id: id + '-p2', label: 'Periode 2', startedAt: new Date(now - 40 * day).toISOString(), endedAt: new Date(now - 10 * day).toISOString() };
     const p3 = { id: id + '-p3', label: 'Periode 3', startedAt: new Date(now - 10 * day).toISOString(), endedAt: null };
-    return { id, name, ownerEmail, members, invites: [], activePeriodId: p3.id, periods: [p1, p2, p3], transactions: [], createdAt: new Date(now - 70 * day).toISOString(), wishlist: [] };
+    return { id, name, ownerEmail, members, invites: [], activePeriodId: p3.id, periods: [p1, p2, p3], transactions: [], chat: [], createdAt: new Date(now - 70 * day).toISOString(), wishlist: [] };
+  }
+  function chatMsg(text, actor, offsetDays) {
+    return { id: 'd' + Math.random().toString(36).slice(2, 10), text, actorEmail: actor.email, createdAt: new Date(now - offsetDays * day).toISOString() };
   }
 
   const r1 = mkRoom('demo-pribadi', 'Pribadi', [fulan.email], fulan.email);
@@ -416,6 +424,12 @@ function buildDemoData() {
     trx('expense', 1500000, 'Bayar kontrakan', fulan, r2.periods[0].id, 66),
   ];
   r2.wishlist = [{ id: 'd-w1', name: 'Liburan ke Bali', price: 5000000, createdAt: new Date(now - 20 * day).toISOString() }];
+  r2.chat = [
+    chatMsg('Sayang, gajian sudah masuk ya', fulan, 1),
+    chatMsg('Alhamdulillah! Aku nabung buat liburan bulan depan', fulanah, 1),
+    chatMsg('Siap, tabungan liburan sudah aku tambah 1 juta', fulan, 0.8),
+    chatMsg('Oke, nanti malam aku belanja bulanan', fulanah, 0.5),
+  ];
 
   const r3 = mkRoom('demo-banyak', 'Banyak Orang', allUsers.map(x => x.email), fulan.email);
   r3.transactions = [
@@ -432,6 +446,11 @@ function buildDemoData() {
     trx('income', 400000, 'Iuran kebersihan', fulanati, r3.periods[0].id, 65),
     trx('income', 400000, 'Iuran keamanan', ful, r3.periods[0].id, 65),
     trx('expense', 1500000, 'Pesta keluarga', fulaa, r3.periods[0].id, 60),
+  ];
+  r3.chat = [
+    chatMsg('Iuran kebersihan bulan ini sudah terkumpul ya', fulanati, 2),
+    chatMsg('Iuran keamanan aman dipegang, minggu ini ada perbaikan pos ronda', ful, 1.5),
+    chatMsg('Makasih semua, saya catat di sini biar transparan', fulan, 1),
   ];
 
   return { users, workspaces: { [r1.id]: r1, [r2.id]: r2, [r3.id]: r3 }, activeId: r2.id };
@@ -680,6 +699,15 @@ function bindEvents() {
   els.transactionForm.addEventListener('submit', (ev) => {
     ev.preventDefault(); if (!state.activeWorkspaceId) return;
     const ws = state.workspaces[state.activeWorkspaceId]; if (!ws) return;
+    if (composerMode === 'chat') {
+      const text = els.chatInput.value.trim();
+      if (!text) return;
+      ws.chat = ws.chat || [];
+      ws.chat.push({ id: createId('chat'), text, actorEmail: state.currentEmail, createdAt: new Date().toISOString() });
+      els.chatInput.value = '';
+      saveState(); render(); scrollFeedToBottom();
+      return;
+    }
     const tier = (state.users[state.currentEmail] || {}).tier || 'free';
     if (tier === 'free') { const cnt = (ws.transactions || []).filter(t => t.periodId === ws.activePeriodId).length; if (cnt >= 30) { els.upgradeDialog.showModal(); return; } }
     const note = els.transactionNoteInput.value.trim(), amount = parseAmount(els.transactionAmountInput.value);
@@ -688,6 +716,14 @@ function bindEvents() {
     els.transactionNoteInput.value = ''; els.transactionAmountInput.value = '';
     saveState(); render(); showToast(selectedType === 'saving' ? 'Tabungan privat tercatat.' : TYPE_LABELS[selectedType] + ' tercatat.'); scrollFeedToBottom();
   });
+
+  els.composerModeBtns.forEach(b => b.addEventListener('click', () => {
+    composerMode = b.dataset.mode;
+    localStorage.setItem('aifa.composer.mode', composerMode);
+    renderComposerMode();
+    if (composerMode === 'chat') els.chatInput.focus();
+  }));
+  renderComposerMode();
 
   els.transactionAmountInput.addEventListener('input', () => { const a = parseAmount(els.transactionAmountInput.value); els.transactionAmountInput.value = a > 0 ? formatPlainNumber(a) : ''; });
   els.toggleSavingsButton.forEach(b => b.addEventListener('click', () => { showSavings = !showSavings; renderTotals(); }));
@@ -815,8 +851,9 @@ function bindEvents() {
 
   els.roomSettingsResetBtn && els.roomSettingsResetBtn.addEventListener('click', () => {
     const ws = getActiveWorkspace(); if (!ws) return;
-    openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan privat tetap aman.', 'Ya, reset', () => {
+    openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pesan chat, pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan privat tetap aman.', 'Ya, reset', () => {
       ws.transactions = [];
+      ws.chat = [];
       saveState(); render();
       showToast('Chat ruang telah di-reset.');
     });
@@ -837,20 +874,36 @@ function bindEvents() {
   els.confirmDialogCancel && els.confirmDialogCancel.addEventListener('click', () => { confirmAction = null; });
 
   els.trxMenuEdit && els.trxMenuEdit.addEventListener('click', () => {
-    const t = findTrxById(contextTargetId);
-    closeTrxMenu();
-    if (t) openEditTransaction(t);
+    if (contextKind === 'chat') {
+      const c = findChatById(contextTargetId);
+      closeTrxMenu();
+      if (c) openEditChat(c);
+    } else {
+      const t = findTrxById(contextTargetId);
+      closeTrxMenu();
+      if (t) openEditTransaction(t);
+    }
   });
   els.trxMenuDelete && els.trxMenuDelete.addEventListener('click', () => {
-    const t = findTrxById(contextTargetId);
+    const kind = contextKind;
+    const t = kind === 'chat' ? findChatById(contextTargetId) : findTrxById(contextTargetId);
     closeTrxMenu();
     if (!t) return;
-    openConfirm('Hapus catatan ini?', 'Catatan "' + t.note + '" sebesar ' + formatCurrency(t.amount) + ' akan dihapus permanen.', 'Hapus', () => {
-      const ws = getActiveWorkspace(); if (!ws) return;
-      ws.transactions = ws.transactions.filter(x => x.id !== t.id);
-      saveState(); render();
-      showToast('Catatan dihapus.');
-    });
+    if (kind === 'chat') {
+      openConfirm('Hapus pesan ini?', 'Pesan akan dihapus.', 'Hapus', () => {
+        const ws = getActiveWorkspace(); if (!ws) return;
+        ws.chat = (ws.chat || []).filter(x => x.id !== t.id);
+        saveState(); render();
+        showToast('Pesan dihapus.');
+      });
+    } else {
+      openConfirm('Hapus catatan ini?', 'Catatan "' + t.note + '" sebesar ' + formatCurrency(t.amount) + ' akan dihapus permanen.', 'Hapus', () => {
+        const ws = getActiveWorkspace(); if (!ws) return;
+        ws.transactions = ws.transactions.filter(x => x.id !== t.id);
+        saveState(); render();
+        showToast('Catatan dihapus.');
+      });
+    }
   });
   document.addEventListener('click', (e) => {
     if (els.trxMenu && !els.trxMenu.contains(e.target)) {
@@ -872,6 +925,17 @@ function bindEvents() {
     showToast('Catatan diperbarui.');
   });
   els.editTransactionDialog && els.editTransactionDialog.addEventListener('close', () => { editingTrxId = null; });
+  els.editChatForm && els.editChatForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const c = findChatById(editingChatId); const ws = getActiveWorkspace();
+    if (!c || !ws) return;
+    const text = els.editChatInput.value.trim();
+    if (!text) return;
+    c.text = text;
+    saveState(); render(); els.editChatDialog.close();
+    showToast('Pesan diperbarui.');
+  });
+  els.editChatDialog && els.editChatDialog.addEventListener('close', () => { editingChatId = null; });
 }
 
 function beginNewAccount(email) {
@@ -1107,12 +1171,25 @@ function renderFeed() {
   const ws = getActiveWorkspace(); if (!ws) return;
   checkPaydayAlert(ws);
   updateWishlistBanner();
-  const txs = ws.transactions.filter(t => t.type !== 'saving' && t.periodId === ws.activePeriodId).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const txs = ws.transactions.filter(t => t.type !== 'saving' && t.periodId === ws.activePeriodId).map(t => ({ kind: 'finance', data: t }));
+  const chats = (ws.chat || []).map(c => ({ kind: 'chat', data: c }));
+  const items = txs.concat(chats).sort((a, b) => new Date(a.data.createdAt) - new Date(b.data.createdAt));
   els.chatFeed.innerHTML = '';
-  if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan.'; els.chatFeed.append(e); return; }
+  if (!items.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan atau pesan.'; els.chatFeed.append(e); return; }
   const f = document.createDocumentFragment();
-  txs.forEach(t => { f.append(createTransactionBubble(t)); });
+  items.forEach(it => { f.append(it.kind === 'chat' ? createChatBubble(it.data) : createTransactionBubble(it.data)); });
   els.chatFeed.append(f); scrollFeedToBottom();
+}
+
+function renderComposerMode() {
+  if (composerMode === 'chat') {
+    els.composerFinanceBox.classList.add('hidden');
+    els.composerChatBox.classList.remove('hidden');
+  } else {
+    els.composerChatBox.classList.add('hidden');
+    els.composerFinanceBox.classList.remove('hidden');
+  }
+  els.composerModeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === composerMode));
 }
 
 function renderArchive() {
@@ -1179,6 +1256,7 @@ function findTrxById(id) {
 function openTrxMenu(id, x, y) {
   if (!els.trxMenu) return;
   contextTargetId = id;
+  contextKind = 'finance';
   const menu = els.trxMenu;
   menu.classList.remove('hidden');
   trxMenuOpenedAt = Date.now();
@@ -1188,6 +1266,70 @@ function openTrxMenu(id, x, y) {
   const vw = window.innerWidth, vh = window.innerHeight;
   menu.style.left = Math.max(8, Math.min(x, vw - mw - 8)) + 'px';
   menu.style.top = Math.max(8, Math.min(y, vh - mh - 8)) + 'px';
+}
+
+function createChatBubble(c) {
+  const author = state.users[c.actorEmail];
+  const msg = document.createElement('article');
+  const mine = c.actorEmail === state.currentEmail;
+  let av = '<span class="mini-avatar">' + escapeHtml(initials(author?.name || c.actorEmail)) + '</span>';
+  if (author?.avatarUrl) av = '<span class="mini-avatar" style="background-image:url(' + author.avatarUrl + ');background-size:cover;background-position:center"></span>';
+  msg.className = 'message' + (mine ? ' mine' : '');
+  msg.innerHTML = av + '<div class="bubble"><div class="bubble-header"><strong>' + escapeHtml(author?.name || c.actorEmail) + '</strong><span>' + formatTime(c.createdAt) + '</span></div><div>' + escapeHtml(c.text) + '</div></div>';
+  if (mine) {
+    msg.dataset.id = c.id;
+    msg.addEventListener('contextmenu', (e) => { e.preventDefault(); openChatMenu(c.id, e.clientX, e.clientY); });
+    msg.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        const p = e.touches[0];
+        openChatMenu(c.id, p.clientX, p.clientY);
+        try { e.preventDefault(); } catch (err) { /* noop */ }
+      }, 500);
+    }, { passive: false });
+    msg.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+    msg.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    msg.addEventListener('touchcancel', () => clearTimeout(longPressTimer));
+  }
+  return msg;
+}
+
+function openChatMenu(id, x, y) {
+  if (!els.trxMenu) return;
+  contextTargetId = id;
+  contextKind = 'chat';
+  const menu = els.trxMenu;
+  menu.classList.remove('hidden');
+  trxMenuOpenedAt = Date.now();
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  const mw = menu.offsetWidth || 140, mh = menu.offsetHeight || 88;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  menu.style.left = Math.max(8, Math.min(x, vw - mw - 8)) + 'px';
+  menu.style.top = Math.max(8, Math.min(y, vh - mh - 8)) + 'px';
+}
+
+function findChatById(id) {
+  const ws = getActiveWorkspace(); if (!ws) return null;
+  return (ws.chat || []).find(x => x.id === id) || null;
+}
+
+function openEditChat(c) {
+  if (!els.editChatDialog) return;
+  editingChatId = c.id;
+  els.editChatInput.value = c.text || '';
+  els.editChatDialog.showModal();
+}
+
+function pruneChat(ws) {
+  const chat = ws.chat || [];
+  const cutoff = Date.now() - 30 * 86400000;
+  const kept = chat.filter(c => new Date(c.createdAt).getTime() >= cutoff);
+  if (kept.length !== chat.length) {
+    ws.chat = kept;
+    setDoc(doc(db, 'workspaces', ws.id), ws).catch(console.error);
+  }
 }
 
 function closeTrxMenu() {
@@ -1237,7 +1379,7 @@ function createWorkspace(name, ownerEmail) {
     return null;
   }
   const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
-  const ws = { id: createId('room'), name, ownerEmail, members: [ownerEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
+  const ws = { id: createId('room'), name, ownerEmail, members: [ownerEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], chat: [], createdAt: new Date().toISOString() };
   state.workspaces[ws.id] = ws;
   setDoc(doc(db, 'workspaces', ws.id), ws).catch((err) => {
     console.error('createWorkspace error:', err);

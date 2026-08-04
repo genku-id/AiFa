@@ -790,6 +790,39 @@ select:focus {
   padding: 0;
 }
 
+.composer-mode-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.composer-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f3f6ef;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+.composer-mode-btn.active {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fffdf7;
+}
+#composerChatBox .composer-row {
+  grid-template-columns: minmax(0, 1fr) 44px;
+}
+#chatInput {
+  min-height: 42px;
+  padding: 9px 10px;
+  font-size: 0.88rem;
+}
+
 .sidebar {
   order: 2;
   display: flex;

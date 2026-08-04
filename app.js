@@ -29,6 +29,7 @@ let pendingSetPasswordEmail = null;
 let confirmAction = null;
 let longPressTimer = null;
 let contextTargetId = null;
+let editingTrxId = null;
 let editType = 'expense';
 let trxMenuOpenedAt = 0;
 let unsubWorkspaces = null, unsubUsers = null;
@@ -702,7 +703,7 @@ function bindEvents() {
   els.editTypeOptions.forEach(b => b.addEventListener('click', () => { editType = b.dataset.type; renderEditTypeSwitch(); }));
   els.editTransactionForm && els.editTransactionForm.addEventListener('submit', (e) => {
     e.preventDefault();
-    const t = findTrxById(contextTargetId); const ws = getActiveWorkspace();
+    const t = findTrxById(editingTrxId); const ws = getActiveWorkspace();
     if (!t || !ws) return;
     const note = els.editNoteInput.value.trim();
     const amount = parseAmount(els.editAmountInput.value);
@@ -713,6 +714,7 @@ function bindEvents() {
     saveState(); render(); els.editTransactionDialog.close();
     showToast('Catatan diperbarui.');
   });
+  els.editTransactionDialog && els.editTransactionDialog.addEventListener('close', () => { editingTrxId = null; });
 }
 
 function beginNewAccount(email) {
@@ -1019,7 +1021,7 @@ function closeTrxMenu() {
 
 function openEditTransaction(t) {
   if (!els.editTransactionDialog) return;
-  contextTargetId = t.id;
+  editingTrxId = t.id;
   editType = t.type;
   els.editNoteInput.value = t.note || '';
   els.editAmountInput.value = t.amount > 0 ? formatPlainNumber(t.amount) : '';

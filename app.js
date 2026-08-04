@@ -723,6 +723,12 @@ function bindEvents() {
     e.stopPropagation();
     toggleModeMenu();
   });
+  els.chatInput && els.chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && composerMode === 'chat') {
+      e.preventDefault();
+      els.transactionForm.requestSubmit();
+    }
+  });
   els.modeMenuItems && els.modeMenuItems.forEach(b => b.addEventListener('click', () => {
     composerMode = b.dataset.mode;
     localStorage.setItem('aifa.composer.mode', composerMode);

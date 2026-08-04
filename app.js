@@ -1216,12 +1216,15 @@ function renderTypeSwitch() {
 
 function checkPaydayAlert(ws) {
   if (!els.paydayAlertContainer) return;
-  const payday = state.users[state.currentEmail]?.payday;
+  const user = state.users[state.currentEmail];
+  const payday = user?.payday;
   if (!payday) { els.paydayAlertContainer.classList.add('hidden'); return; }
-  const p = getActivePeriod(ws); const now = new Date();
+  const now = new Date();
   let rd = new Date(now.getFullYear(), now.getMonth(), payday);
   if (now.getDate() < payday) rd.setMonth(rd.getMonth() - 1);
-  if (p && new Date(p.startedAt) < rd) els.paydayAlertContainer.classList.remove('hidden');
+  const hasOwnExpenses = (ws.transactions || []).some(t => t.type === 'expense' && t.periodId === ws.activePeriodId && t.actorEmail === state.currentEmail);
+  const lastCleared = user.expenseClearedAt ? new Date(user.expenseClearedAt) : null;
+  if (hasOwnExpenses && (!lastCleared || lastCleared < rd)) els.paydayAlertContainer.classList.remove('hidden');
   else els.paydayAlertContainer.classList.add('hidden');
 }
 
@@ -1449,6 +1452,8 @@ function renderEditTypeSwitch() {
 
 function refreshWorkspace(ws) {
   ws.transactions = (ws.transactions || []).filter(t => !(t.type === 'expense' && t.periodId === ws.activePeriodId && t.actorEmail === state.currentEmail));
+  const user = state.users[state.currentEmail];
+  if (user) user.expenseClearedAt = new Date().toISOString();
   saveState(); render(); showToast('Pengeluaranmu di periode ini telah dihapus.');
 }
 

@@ -591,8 +591,7 @@ select:focus {
 }
 
 .composer {
-  position: sticky;
-  bottom: 8px;
+  position: static;
   z-index: 3;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -1208,7 +1207,7 @@ svg {
 }
 
 .chat-panel {
-  padding: 8px;
+  padding: 8px 8px 6px;
 }
 
 .bubble {

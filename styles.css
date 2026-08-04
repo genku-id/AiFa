@@ -247,6 +247,45 @@ select:focus {
   box-shadow: 0 0 0 3px rgba(36, 72, 58, 0.14);
 }
 
+.pw-field {
+  position: relative;
+}
+.pw-field input {
+  padding-right: 44px;
+}
+.pw-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--muted);
+}
+.pw-toggle:hover {
+  color: var(--ink);
+}
+.pw-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+.pw-toggle .pw-eye-off {
+  display: none;
+}
+.pw-toggle.showing .pw-eye-off {
+  display: block;
+}
+.pw-toggle.showing .pw-eye {
+  display: none;
+}
+
 .primary-button,
 .secondary-button,
 .danger-button,

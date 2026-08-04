@@ -25,6 +25,7 @@ const EMAIL_TYPOS = {
 const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
+let pendingSetPasswordEmail = null;
 let confirmAction = null;
 let longPressTimer = null;
 let contextTargetId = null;
@@ -34,10 +35,11 @@ let unsubWorkspaces = null, unsubUsers = null;
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
   stepAuth: document.querySelector('#stepAuth'), stepProfile: document.querySelector('#stepProfile'), stepWorkspace: document.querySelector('#stepWorkspace'),
-  loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'),
+  loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'), passwordInput: document.querySelector('#passwordInput'), loginError: document.querySelector('#loginError'), forgotPasswordLink: document.querySelector('#forgotPasswordLink'),
   onboardProfileForm: document.querySelector('#onboardProfileForm'), onboardAvatarPreview: document.querySelector('#onboardAvatarPreview'),
   onboardAvatarInput: document.querySelector('#onboardAvatarInput'), onboardNameInput: document.querySelector('#onboardNameInput'),
   onboardRoleInput: document.querySelector('#onboardRoleInput'), onboardWaInput: document.querySelector('#onboardWaInput'),
+  onboardPasswordInput: document.querySelector('#onboardPasswordInput'), onboardPasswordConfirmInput: document.querySelector('#onboardPasswordConfirmInput'), onboardPasswordError: document.querySelector('#onboardPasswordError'),
   onboardWorkspaceForm: document.querySelector('#onboardWorkspaceForm'), onboardRoomNameInput: document.querySelector('#onboardRoomNameInput'),
   onboardQrisPanel: document.querySelector('#onboardQrisPanel'), onboardConfirmWaBtn: document.querySelector('#onboardConfirmWaBtn'),
   tierFreeCard: document.querySelector('#tierFreeCard'), tierPremiumCard: document.querySelector('#tierPremiumCard'),
@@ -63,6 +65,11 @@ const els = {
   profileWaInput: document.querySelector('#profileWaInput'),
   reminderToggle: document.querySelector('#reminderToggle'),
   reminderTimeInput: document.querySelector('#reminderTimeInput'), paydayAlertContainer: document.querySelector('#paydayAlertContainer'),
+  profileCurPasswordInput: document.querySelector('#profileCurPasswordInput'), profileNewPasswordInput: document.querySelector('#profileNewPasswordInput'), profileNewPassword2Input: document.querySelector('#profileNewPassword2Input'),
+  setPasswordDialog: document.querySelector('#setPasswordDialog'), setPasswordForm: document.querySelector('#setPasswordForm'),
+  setPasswordEmail: document.querySelector('#setPasswordEmail'), setPasswordNewInput: document.querySelector('#setPasswordNewInput'),
+  setPasswordConfirmInput: document.querySelector('#setPasswordConfirmInput'), setPasswordError: document.querySelector('#setPasswordError'),
+  setPasswordCancelBtn: document.querySelector('#setPasswordCancelBtn'),
   archiveView: document.querySelector('#archiveView'), archiveFeed: document.querySelector('#archiveFeed'),
   closeArchiveButton: document.querySelector('#closeArchiveButton'), installBanner: document.querySelector('#installBanner'),
   installButton: document.querySelector('#installButton'), closeInstallBanner: document.querySelector('#closeInstallBanner'),
@@ -276,8 +283,51 @@ async function joinWorkspaceFromInvite(inviteId, inviteName) {
   showToast('Berhasil bergabung ke ruang ' + inviteName);
 }
 
-function resizeImage(file, cb) {
-  const reader = new FileReader();
+async function sha256Hex(str) {
+  const data = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function fallbackHash(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) + h + str.charCodeAt(i)) >>> 0;
+  return 'fb_' + h.toString(16) + '_' + str.length;
+}
+async function hashPassword(password, salt) {
+  if (crypto && crypto.subtle) return sha256Hex(salt + ':' + password);
+  return fallbackHash(salt + ':' + password);
+}
+async function makePassword(password) {
+  const bytes = crypto.getRandomValues ? crypto.getRandomValues(new Uint8Array(16)) : new Uint8Array(16);
+  const salt = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+  return { salt, hash: await hashPassword(password, salt) };
+}
+async function verifyPassword(password, stored) {
+  if (!stored || !stored.salt || !stored.hash) return false;
+  return (await hashPassword(password, stored.salt)) === stored.hash;
+}
+function hasPassword(user) { return !!(user && user.password && user.password.salt && user.password.hash); }
+
+function completeLogin(email, data) {
+  state.currentEmail = email;
+  state.users[email] = data;
+  saveState(); subscribeToData();
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('inviteId') && p.get('inviteName')) joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName')).then(render);
+  ensureActiveWorkspace(); showStep('dashboard'); render();
+  showToast('Selamat datang, ' + (data.name || email.split('@')[0]) + '!');
+}
+
+function beginSetPassword(email) {
+  pendingSetPasswordEmail = email;
+  if (els.setPasswordEmail) els.setPasswordEmail.textContent = email;
+  if (els.setPasswordNewInput) els.setPasswordNewInput.value = '';
+  if (els.setPasswordConfirmInput) els.setPasswordConfirmInput.value = '';
+  if (els.setPasswordError) els.setPasswordError.style.display = 'none';
+  if (els.setPasswordDialog && typeof els.setPasswordDialog.showModal === 'function') els.setPasswordDialog.showModal();
+}
+
+function resizeImage(file, cb) {  const reader = new FileReader();
   reader.onload = (ev) => {
     const img = new Image();
     img.onload = () => {
@@ -296,18 +346,26 @@ function bindEvents() {
   els.loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = normalizeEmail(els.emailInput.value);
-    if (!email) return;
+    const password = els.passwordInput.value;
+    if (els.loginError) els.loginError.style.display = 'none';
+    if (!email || !password) return;
     const btn = document.querySelector('#loginSubmitBtn');
     btn.disabled = true; btn.textContent = 'Memeriksa...';
     try {
       const userSnap = await getDoc(doc(db, 'users', email));
       if (userSnap.exists()) {
-        state.currentEmail = email;
-        state.users[email] = userSnap.data();
-        saveState(); subscribeToData();
-        const p = new URLSearchParams(window.location.search);
-        if (p.get('inviteId') && p.get('inviteName')) joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName')).then(render);
-        ensureActiveWorkspace(); showStep('dashboard'); render();
+        const data = userSnap.data();
+        if (!hasPassword(data)) {
+          state.users[email] = data;
+          beginSetPassword(email);
+          return;
+        }
+        const ok = await verifyPassword(password, data.password);
+        if (!ok) {
+          if (els.loginError) { els.loginError.textContent = 'Password salah. Coba lagi.'; els.loginError.style.display = 'block'; }
+          return;
+        }
+        completeLogin(email, data);
       } else {
         pendingNewAccountEmail = email;
         els.newAccountEmail.textContent = email;
@@ -325,14 +383,44 @@ function bindEvents() {
       }
     } catch (err) {
       console.error(err);
-      if (state.users[email]) {
-        state.currentEmail = email;
-        subscribeToData(); ensureActiveWorkspace(); showStep('dashboard'); render();
-      } else {
-        alert('Gagal memeriksa akun. Pastikan koneksi internet lancar dan coba lagi.');
-      }
-    } finally { btn.disabled = false; btn.textContent = 'Lanjutkan'; }
+      alert('Gagal memeriksa akun. Pastikan koneksi internet lancar dan coba lagi.');
+    } finally { btn.disabled = false; btn.textContent = 'Masuk'; }
   });
+
+  els.forgotPasswordLink && els.forgotPasswordLink.addEventListener('click', (e) => {
+    e.preventDefault();
+    const email = normalizeEmail(els.emailInput.value) || '[email akunmu]';
+    window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
+  });
+
+  els.setPasswordForm && els.setPasswordForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = pendingSetPasswordEmail; if (!email) return;
+    const pw = els.setPasswordNewInput.value;
+    const pw2 = els.setPasswordConfirmInput.value;
+    const errEl = els.setPasswordError;
+    errEl.style.display = 'none';
+    if (pw.length < 6) { errEl.textContent = 'Password minimal 6 karakter.'; errEl.style.display = 'block'; return; }
+    if (pw !== pw2) { errEl.textContent = 'Password tidak sama.'; errEl.style.display = 'block'; return; }
+    const btn = els.setPasswordSaveBtn;
+    btn.disabled = true; btn.textContent = 'Menyimpan...';
+    try {
+      const data = Object.assign({}, state.users[email] || {});
+      data.password = await makePassword(pw);
+      state.users[email] = data;
+      await setDoc(doc(db, 'users', email), data);
+      els.setPasswordDialog.close();
+      pendingSetPasswordEmail = null;
+      completeLogin(email, data);
+    } catch (err) {
+      console.error('setPassword error:', err);
+      errEl.textContent = 'Gagal menyimpan password. Cek koneksi lalu coba lagi.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Simpan & Masuk';
+    }
+  });
+  els.setPasswordCancelBtn && els.setPasswordCancelBtn.addEventListener('click', () => { pendingSetPasswordEmail = null; els.setPasswordDialog.close(); els.passwordInput.focus(); });
+  els.setPasswordDialog && els.setPasswordDialog.addEventListener('click', (e) => { if (e.target === els.setPasswordDialog) { pendingSetPasswordEmail = null; els.setPasswordDialog.close(); } });
 
   els.newAccountCreateBtn && els.newAccountCreateBtn.addEventListener('click', () => {
     els.newAccountDialog.close();
@@ -359,7 +447,14 @@ function bindEvents() {
 
   els.onboardProfileForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const errEl = els.onboardPasswordError;
+    errEl.style.display = 'none';
+    const pw = els.onboardPasswordInput.value;
+    const pw2 = els.onboardPasswordConfirmInput.value;
+    if (pw.length < 6) { errEl.textContent = 'Password minimal 6 karakter.'; errEl.style.display = 'block'; return; }
+    if (pw !== pw2) { errEl.textContent = 'Password tidak sama.'; errEl.style.display = 'block'; return; }
     const userObj = { email: state.currentEmail, name: els.onboardNameInput.value.trim() || state.currentEmail.split('@')[0], role: els.onboardRoleInput.value.trim() || null, wa: els.onboardWaInput.value.trim() || null, avatarUrl: els.onboardAvatarPreview.dataset.avatar || null, tier: 'free', createdAt: new Date().toISOString() };
+    userObj.password = await makePassword(pw);
     state.users[state.currentEmail] = userObj;
     setDoc(doc(db, 'users', state.currentEmail), userObj).catch((err) => {
       console.error('createUser error:', err);
@@ -406,6 +501,7 @@ function bindEvents() {
     Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
     showSavings = false; saveState(); showStep('auth');
     els.emailInput.value = '';
+    if (els.passwordInput) { els.passwordInput.value = ''; if (els.loginError) els.loginError.style.display = 'none'; }
   });
 
   els.closeInstallBanner && els.closeInstallBanner.addEventListener('click', () => { els.installBanner.classList.remove('show'); setTimeout(() => els.installBanner.classList.add('hidden'), 300); localStorage.setItem('installBannerDismissed', 'true'); });
@@ -451,17 +547,31 @@ function bindEvents() {
     const user = state.users[state.currentEmail]; if (!user) return;
     els.profileNameInput.value = user.name || ''; els.profileRoleInput.value = user.role || ''; els.profilePaydayInput.value = user.payday || ''; els.profileWaInput.value = user.wa || '';
     if (els.reminderToggle) { els.reminderToggle.checked = !!(user.reminder && user.reminder.enabled); els.reminderTimeInput.value = (user.reminder && user.reminder.time) || '20:00'; }
+    if (els.profileCurPasswordInput) { els.profileCurPasswordInput.value = ''; els.profileNewPasswordInput.value = ''; els.profileNewPassword2Input.value = ''; }
     if (user.avatarUrl) { els.profileAvatarPreview.style.backgroundImage = 'url(' + user.avatarUrl + ')'; els.profileAvatarPreview.textContent = ''; }
     else { els.profileAvatarPreview.style.backgroundImage = 'none'; els.profileAvatarPreview.textContent = initials(user.name || user.email); }
     els.profileDialog.showModal();
   });
   els.profileAvatarInput && els.profileAvatarInput.addEventListener('change', (e) => { const file = e.target.files[0]; if (!file) return; resizeImage(file, (d) => { els.profileAvatarPreview.style.backgroundImage = 'url(' + d + ')'; els.profileAvatarPreview.textContent = ''; els.profileAvatarPreview.dataset.newAvatar = d; }); });
-  els.profileForm && els.profileForm.addEventListener('submit', () => {
+  els.profileForm && els.profileForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
     const user = state.users[state.currentEmail]; if (!user) return;
     user.name = els.profileNameInput.value.trim(); user.role = els.profileRoleInput.value.trim(); user.payday = parseInt(els.profilePaydayInput.value, 10) || null; user.wa = els.profileWaInput.value.trim();
     if (els.profileAvatarPreview.dataset.newAvatar) { user.avatarUrl = els.profileAvatarPreview.dataset.newAvatar; delete els.profileAvatarPreview.dataset.newAvatar; }
     if (els.reminderToggle) { user.reminder = { enabled: els.reminderToggle.checked, time: els.reminderTimeInput.value || '20:00' }; }
+    const cur = els.profileCurPasswordInput.value, nw = els.profileNewPasswordInput.value, nw2 = els.profileNewPassword2Input.value;
+    if (cur || nw || nw2) {
+      if (!hasPassword(user)) { showToast('Akun ini belum punya password.'); return; }
+      const ok = await verifyPassword(cur, user.password);
+      if (!ok) { showToast('Password saat ini salah.'); return; }
+      if (nw.length < 6) { showToast('Password baru minimal 6 karakter.'); return; }
+      if (nw !== nw2) { showToast('Password baru tidak sama.'); return; }
+      user.password = await makePassword(nw);
+      els.profileCurPasswordInput.value = ''; els.profileNewPasswordInput.value = ''; els.profileNewPassword2Input.value = '';
+      showToast('Password berhasil diganti!');
+    }
     saveState(); render(); syncReminder();
+    els.profileDialog.close();
   });
 
   // Custom workspace dropdown toggle

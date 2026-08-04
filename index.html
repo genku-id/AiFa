@@ -35,8 +35,14 @@
           <form class="auth-form" id="loginForm">
             <label for="emailInput">Email akun</label>
             <input id="emailInput" type="email" autocomplete="email" placeholder="nama@email.com" required />
-            <button class="primary-button" type="submit" id="loginSubmitBtn">Lanjutkan</button>
+            <label for="passwordInput" style="margin-top:14px;">Password</label>
+            <input id="passwordInput" type="password" autocomplete="current-password" placeholder="Kata sandi akun" required />
+            <p id="loginError" style="color:var(--danger,#d9534f);font-size:0.8rem;margin:8px 0 0;display:none;"></p>
+            <button class="primary-button" type="submit" id="loginSubmitBtn">Masuk</button>
           </form>
+          <p style="text-align:center;margin-top:14px;font-size:0.8rem;">
+            <a href="#" id="forgotPasswordLink" style="color:var(--primary);font-weight:700;">Lupa password?</a>
+          </p>
         </div>
 
         <!-- STEP 2: Setup Profil -->
@@ -62,6 +68,11 @@
             <input id="onboardRoleInput" type="text" placeholder="Contoh: Suami, Istri, Pacar" />
             <label for="onboardWaInput">No. WhatsApp <span style="color:var(--muted);font-weight:400;">(opsional)</span></label>
             <input id="onboardWaInput" type="text" inputmode="numeric" placeholder="Contoh: 08123456789" />
+            <label for="onboardPasswordInput" style="margin-top:14px;">Buat password</label>
+            <input id="onboardPasswordInput" type="password" autocomplete="new-password" placeholder="Minimal 6 karakter" required minlength="6" />
+            <label for="onboardPasswordConfirmInput" style="margin-top:12px;">Ulangi password</label>
+            <input id="onboardPasswordConfirmInput" type="password" autocomplete="new-password" required minlength="6" />
+            <p id="onboardPasswordError" style="color:var(--danger,#d9534f);font-size:0.8rem;margin:8px 0 0;display:none;"></p>
             <button class="primary-button" type="submit">Lanjut &rarr;</button>
           </form>
         </div>
@@ -328,6 +339,11 @@
           <input id="reminderTimeInput" type="time" style="flex:1;" />
         </div>
         <p style="font-size:0.72rem;color:var(--muted);margin:6px 0 0;">Notifikasi muncul setiap hari pada jam tersebut. Muncul selama aplikasi terbuka, atau otomatis jika aplikasi terinstal & diizinkan.</p>
+        <hr style="border:none;border-top:1px solid var(--line);margin:16px 0;" />
+        <label class="field-label" style="text-align:left;display:block;">Ganti Password</label>
+        <input id="profileCurPasswordInput" type="password" autocomplete="current-password" style="width:100%;margin-top:4px;" placeholder="Password saat ini" />
+        <input id="profileNewPasswordInput" type="password" autocomplete="new-password" style="width:100%;margin-top:8px;" placeholder="Password baru (minimal 6)" />
+        <input id="profileNewPassword2Input" type="password" autocomplete="new-password" style="width:100%;margin-top:8px;" placeholder="Ulangi password baru" />
         <div class="dialog-actions" style="margin-top:20px;">
           <button class="secondary-button" value="cancel" type="button" onclick="document.getElementById('profileDialog').close()">Batal</button>
           <button class="primary-button" type="submit">Simpan</button>
@@ -373,6 +389,22 @@
         <div class="dialog-actions">
           <button class="secondary-button" id="confirmDialogCancel" value="cancel" type="submit">Batal</button>
           <button class="danger-button" id="confirmDialogOk" value="confirm" type="button">Ya</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="reset-dialog" id="setPasswordDialog">
+      <form method="dialog" class="dialog-card" id="setPasswordForm" style="max-width:320px;width:100%;">
+        <h2>Buat Password Akun &#128274;</h2>
+        <p style="font-size:0.8rem;color:var(--muted);margin:8px 0 12px;">Akun <strong id="setPasswordEmail" style="color:var(--ink);"></strong> belum memiliki password. Buat password sekarang agar akunmu aman.</p>
+        <label for="setPasswordNewInput" class="field-label" style="text-align:left;display:block;">Password baru</label>
+        <input id="setPasswordNewInput" type="password" autocomplete="new-password" style="width:100%;margin-top:4px;" placeholder="Minimal 6 karakter" required minlength="6" />
+        <label for="setPasswordConfirmInput" class="field-label" style="text-align:left;display:block;margin-top:12px;">Ulangi password</label>
+        <input id="setPasswordConfirmInput" type="password" autocomplete="new-password" style="width:100%;margin-top:4px;" required minlength="6" />
+        <p id="setPasswordError" style="color:var(--danger,#d9534f);font-size:0.8rem;margin:8px 0 0;display:none;"></p>
+        <div class="dialog-actions" style="margin-top:20px;">
+          <button class="secondary-button" value="cancel" type="button" id="setPasswordCancelBtn">Batal</button>
+          <button class="primary-button" type="submit" id="setPasswordSaveBtn">Simpan &amp; Masuk</button>
         </div>
       </form>
     </dialog>

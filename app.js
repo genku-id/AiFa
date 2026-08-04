@@ -1414,10 +1414,8 @@ function renderEditTypeSwitch() {
 }
 
 function refreshWorkspace(ws) {
-  const op = getActivePeriod(ws); if (op) op.endedAt = new Date().toISOString();
-  const np = { id: createId('period'), label: 'Periode ' + (ws.periods.length + 1), startedAt: new Date().toISOString(), endedAt: null };
-  ws.periods.push(np); ws.activePeriodId = np.id;
-  saveState(); render(); showToast('Periode baru dimulai. Tabungan tetap tersimpan.');
+  ws.transactions = (ws.transactions || []).filter(t => !(t.type === 'expense' && t.periodId === ws.activePeriodId && t.actorEmail === state.currentEmail));
+  saveState(); render(); showToast('Pengeluaranmu di periode ini telah dihapus.');
 }
 
 function calculateTotals(ws) {

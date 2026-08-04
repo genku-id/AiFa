@@ -11,7 +11,7 @@ AiFa adalah prototipe aplikasi catatan keuangan bersama dengan gaya chat.
 - Catat pendapatan, pengeluaran, dan tabungan.
 - Pendapatan dan pengeluaran tampil di chat bersama.
 - Tabungan tampil di chat bersama dan tidak ikut refresh.
-- Tombol refresh memulai periode baru sehingga total pendapatan dan pengeluaran kembali nol.
+- Tombol bersihkan menghapus pengeluaran milikmu di periode ini; catatan anggota lain tetap tersimpan.
 - Arsip periode lama tetap bisa dilihat, tetapi tidak ikut total aktif.
 
 ## Cara menjalankan

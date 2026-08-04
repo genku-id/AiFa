@@ -923,7 +923,7 @@ function renderHeader() {
 function renderTotals() {
   const ws = getActiveWorkspace(); if (!ws) return;
   const t = calculateTotals(ws);
-  els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income));
+  els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense));
   els.expenseTotal.forEach(el => el.textContent = formatSummaryCurrency(t.expense));
   els.balanceTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense));
   els.savingTotal.forEach(el => el.textContent = showSavings ? formatSummaryCurrency(t.saving) : '***');

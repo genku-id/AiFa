@@ -326,6 +326,37 @@
       </form>
     </dialog>
 
+    <dialog class="reset-dialog" id="roomSettingsDialog">
+      <form method="dialog" class="dialog-card" id="roomSettingsForm">
+        <h2>Pengaturan Ruang</h2>
+        <label class="field-label" style="display:block;margin-top:12px;text-align:left;">Nama ruang</label>
+        <div style="display:flex;gap:8px;margin-top:4px;">
+          <input id="roomSettingsNameInput" type="text" style="flex:1;" required />
+          <button class="primary-button" type="submit" style="white-space:nowrap;">Simpan</button>
+        </div>
+        <label class="field-label" style="display:block;margin-top:18px;text-align:left;">Anggota (<span id="roomSettingsMemberCount">0</span>)</label>
+        <div class="member-list" id="roomSettingsMemberList" style="max-height:180px;overflow-y:auto;margin-top:4px;"></div>
+        <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px;">
+          <button class="danger-button" id="roomSettingsResetBtn" type="button">Reset Chat Ruang</button>
+          <button class="danger-button" id="roomSettingsDeleteBtn" type="button" style="background:transparent;color:var(--danger,#d9534f);border-color:var(--danger,#d9534f);">Hapus Ruang</button>
+        </div>
+        <div class="dialog-actions">
+          <button class="secondary-button" value="cancel" type="button" onclick="document.getElementById('roomSettingsDialog').close()">Tutup</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="reset-dialog" id="confirmDialog">
+      <form method="dialog" class="dialog-card">
+        <h2 id="confirmDialogTitle">Konfirmasi</h2>
+        <p id="confirmDialogMessage"></p>
+        <div class="dialog-actions">
+          <button class="secondary-button" id="confirmDialogCancel" value="cancel" type="submit">Batal</button>
+          <button class="danger-button" id="confirmDialogOk" value="confirm" type="button">Ya</button>
+        </div>
+      </form>
+    </dialog>
+
     <dialog class="reset-dialog" id="newAccountDialog">
       <form method="dialog" class="dialog-card">
         <h2>Akun tidak ditemukan</h2>

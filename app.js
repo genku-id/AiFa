@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
-import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, arrayUnion, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const firebaseConfig = { apiKey: 'AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw', authDomain: 'gen-lang-client-0513521672.firebaseapp.com', projectId: 'gen-lang-client-0513521672', storageBucket: 'gen-lang-client-0513521672.firebasestorage.app', messagingSenderId: '358176864493', appId: '1:358176864493:web:24591e445aa4fe8612f4e4' };
 const app = initializeApp(firebaseConfig);
@@ -25,6 +25,7 @@ const EMAIL_TYPOS = {
 const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
+let confirmAction = null;
 let unsubWorkspaces = null, unsubUsers = null;
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
@@ -77,6 +78,18 @@ const els = {
   newAccountCreateBtn: document.querySelector('#newAccountCreateBtn'),
   newAccountCancelBtn: document.querySelector('#newAccountCancelBtn'),
   newAccountFixBtn: document.querySelector('#newAccountFixBtn'),
+  roomSettingsDialog: document.querySelector('#roomSettingsDialog'),
+  roomSettingsForm: document.querySelector('#roomSettingsForm'),
+  roomSettingsNameInput: document.querySelector('#roomSettingsNameInput'),
+  roomSettingsMemberList: document.querySelector('#roomSettingsMemberList'),
+  roomSettingsMemberCount: document.querySelector('#roomSettingsMemberCount'),
+  roomSettingsResetBtn: document.querySelector('#roomSettingsResetBtn'),
+  roomSettingsDeleteBtn: document.querySelector('#roomSettingsDeleteBtn'),
+  confirmDialog: document.querySelector('#confirmDialog'),
+  confirmDialogTitle: document.querySelector('#confirmDialogTitle'),
+  confirmDialogMessage: document.querySelector('#confirmDialogMessage'),
+  confirmDialogOk: document.querySelector('#confirmDialogOk'),
+  confirmDialogCancel: document.querySelector('#confirmDialogCancel'),
 };
 
 boot();
@@ -451,16 +464,40 @@ function bindEvents() {
   });
 
   // Workspace Settings
-  els.workspaceSettingsButton && els.workspaceSettingsButton.addEventListener('click', () => {
-    const ws = getActiveWorkspace();
-    if (!ws) return;
-    const newName = prompt('Ganti nama ruang:', ws.name);
-    if (newName && newName.trim() !== '' && newName !== ws.name) {
-      ws.name = newName.trim();
-      saveState();
-      render();
-    }
+  els.workspaceSettingsButton && els.workspaceSettingsButton.addEventListener('click', openRoomSettings);
+
+  els.roomSettingsForm && els.roomSettingsForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const ws = getActiveWorkspace(); if (!ws) return;
+    const newName = els.roomSettingsNameInput.value.trim();
+    if (!newName || newName === ws.name) return;
+    ws.name = newName;
+    saveState(); render();
+    showToast('Nama ruang disimpan.');
   });
+
+  els.roomSettingsResetBtn && els.roomSettingsResetBtn.addEventListener('click', () => {
+    const ws = getActiveWorkspace(); if (!ws) return;
+    openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan privat tetap aman.', 'Ya, reset', () => {
+      ws.transactions = [];
+      saveState(); render();
+      showToast('Chat ruang telah di-reset.');
+    });
+  });
+
+  els.roomSettingsDeleteBtn && els.roomSettingsDeleteBtn.addEventListener('click', () => {
+    const ws = getActiveWorkspace(); if (!ws) return;
+    openConfirm('Hapus ruang ini?', 'Ruang "' + ws.name + '" beserta semua catatannya akan dihapus permanen untuk semua anggota.', 'Ya, hapus', () => {
+      deleteWorkspace(ws.id);
+    });
+  });
+
+  els.confirmDialogOk && els.confirmDialogOk.addEventListener('click', () => {
+    els.confirmDialog.close();
+    const cb = confirmAction; confirmAction = null;
+    if (cb) cb();
+  });
+  els.confirmDialogCancel && els.confirmDialogCancel.addEventListener('click', () => { confirmAction = null; });
 }
 
 function beginNewAccount(email) {
@@ -553,6 +590,56 @@ function renderMembers() {
     item.innerHTML = av + '<span>' + escapeHtml(user?.name || email) + roleHtml + '<br><small>' + escapeHtml(email) + '</small></span>' + waHtml;
     els.memberList.append(item);
   });
+}
+
+function openRoomSettings() {
+  const ws = getActiveWorkspace(); if (!ws) return;
+  els.roomSettingsNameInput.value = ws.name;
+  renderRoomSettingsMembers(ws);
+  if (typeof els.roomSettingsDialog.showModal === 'function') els.roomSettingsDialog.showModal();
+}
+
+function renderRoomSettingsMembers(ws) {
+  if (!els.roomSettingsMemberList) return;
+  els.roomSettingsMemberCount.textContent = String(ws.members.length);
+  els.roomSettingsMemberList.innerHTML = '';
+  ws.members.forEach(email => {
+    const user = state.users[email];
+    const item = document.createElement('div');
+    item.className = 'member-chip';
+    let av = '<span class="mini-avatar">' + escapeHtml(initials(user?.name || email)) + '</span>';
+    if (user?.avatarUrl) av = '<span class="mini-avatar" style="background-image:url(' + user.avatarUrl + ');background-size:cover;background-position:center"></span>';
+    const roleHtml = user?.role ? ' \u2022 <i>' + escapeHtml(user.role) + '</i>' : '';
+    item.innerHTML = av + '<span>' + escapeHtml(user?.name || email) + roleHtml + '<br><small>' + escapeHtml(email) + '</small></span>';
+    els.roomSettingsMemberList.append(item);
+  });
+}
+
+function deleteWorkspace(id) {
+  const ws = state.workspaces[id];
+  deleteDoc(doc(db, 'workspaces', id)).catch(err => {
+    console.error('deleteWorkspace error:', err);
+    if (ws) state.workspaces[id] = ws;
+    if (els.roomSettingsDialog && els.roomSettingsDialog.open) els.roomSettingsDialog.close();
+    render();
+    showToast('Gagal menghapus ruang: ' + (err.code || err.message));
+  });
+  delete state.workspaces[id];
+  if (state.activeWorkspaceId === id) state.activeWorkspaceId = null;
+  const remaining = getUserWorkspaces();
+  if (remaining.length) state.activeWorkspaceId = remaining[0].id;
+  saveState(); render();
+  if (els.roomSettingsDialog && els.roomSettingsDialog.open) els.roomSettingsDialog.close();
+  showToast('Ruang dihapus.');
+}
+
+function openConfirm(title, message, okLabel, callback) {
+  if (!els.confirmDialog) return;
+  els.confirmDialogTitle.textContent = title;
+  els.confirmDialogMessage.textContent = message;
+  if (els.confirmDialogOk) els.confirmDialogOk.textContent = okLabel || 'Ya';
+  confirmAction = callback;
+  els.confirmDialog.showModal();
 }
 
 function renderHeader() {

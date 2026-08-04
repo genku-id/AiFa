@@ -30,7 +30,7 @@
           <h1>Catatan keuangan bersama.</h1>
           <p class="auth-copy">
             Catat pemasukan dan pengeluaran bareng.<br>
-            Tabungan tetap privat dan tidak ikut reset.
+            Tabungan tidak ikut reset.
           </p>
           <form class="auth-form" id="loginForm">
             <label for="emailInput">Email akun</label>
@@ -162,7 +162,7 @@
                 <div class="summary-divider"></div>
                 <div class="summary-col saving-text">
                   <span class="summary-label">tabungan</span>
-                  <button class="text-icon-button compact-icon-btn toggleSavingsButton" type="button"><strong class="savingTotal">***</strong></button>
+                  <strong class="savingTotal">0</strong>
                 </div>
               </div>
             </div>
@@ -260,7 +260,7 @@
                 <div class="summary-divider"></div>
                 <div class="summary-col saving-text">
                   <span class="summary-label">tabungan</span>
-                  <button class="text-icon-button compact-icon-btn toggleSavingsButton" type="button"><strong class="savingTotal">***</strong></button>
+                  <strong class="savingTotal">0</strong>
                 </div>
               </div>
             </div>
@@ -321,7 +321,7 @@
     <dialog class="reset-dialog" id="resetDialog">
       <form method="dialog" class="dialog-card">
         <h2>Refresh periode?</h2>
-        <p>Pendapatan dan pengeluaran periode ini akan masuk arsip dan total dimulai dari nol. Tabungan privat tetap tersimpan.</p>
+        <p>Pendapatan dan pengeluaran periode ini akan masuk arsip dan total dimulai dari nol. Tabungan tetap tersimpan.</p>
         <div class="dialog-actions">
           <button class="secondary-button" value="cancel" type="submit">Batal</button>
           <button class="danger-button" id="confirmRefreshButton" value="confirm" type="button">Ya, refresh</button>

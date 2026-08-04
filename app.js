@@ -23,7 +23,7 @@ const EMAIL_TYPOS = {
   'yahho.com': 'yahoo.com',
 };
 const state = loadState();
-let selectedType = 'expense', showSavings = false, deferredPrompt;
+let selectedType = 'expense', deferredPrompt;
 let pendingNewAccountEmail = null;
 let pendingSetPasswordEmail = null;
 let demoMode = false;
@@ -59,7 +59,6 @@ const els = {
   workspaceTitle: document.querySelector('#workspaceTitle'), periodLabel: document.querySelector('#periodLabel'),
   incomeTotal: document.querySelectorAll('.incomeTotal'), expenseTotal: document.querySelectorAll('.expenseTotal'),
   balanceTotal: document.querySelectorAll('.balanceTotal'), savingTotal: document.querySelectorAll('.savingTotal'),
-  toggleSavingsButton: document.querySelectorAll('.toggleSavingsButton'),
   archiveButton: document.querySelector('#archiveButton'),
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
@@ -477,7 +476,6 @@ function exitDemo() {
   demoMode = false;
   if (els.demoBanner) els.demoBanner.classList.add('hidden');
   Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
-  showSavings = false;
   saveState();
   showStep('auth');
 }
@@ -678,7 +676,7 @@ function bindEvents() {
     demoMode = false;
     if (els.demoBanner) els.demoBanner.classList.add('hidden');
     Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
-    showSavings = false; saveState(); showStep('auth');
+    saveState(); showStep('auth');
     els.emailInput.value = '';
     if (els.passwordInput) { els.passwordInput.value = ''; if (els.loginError) els.loginError.style.display = 'none'; }
   });
@@ -716,7 +714,7 @@ function bindEvents() {
     if (!note || amount <= 0) return;
     ws.transactions.push({ id: createId('trx'), type: selectedType, note, amount, actorEmail: state.currentEmail, periodId: selectedType === 'saving' ? null : ws.activePeriodId, createdAt: new Date().toISOString(), privateOwnerEmail: selectedType === 'saving' ? state.currentEmail : null });
     els.transactionNoteInput.value = ''; els.transactionAmountInput.value = '';
-    saveState(); render(); showToast(selectedType === 'saving' ? 'Tabungan privat tercatat.' : TYPE_LABELS[selectedType] + ' tercatat.'); scrollFeedToBottom();
+    saveState(); render(); showToast(selectedType === 'saving' ? 'Tabungan tercatat.' : TYPE_LABELS[selectedType] + ' tercatat.'); scrollFeedToBottom();
   });
 
   els.modeDotsBtn && els.modeDotsBtn.addEventListener('click', (e) => {
@@ -739,7 +737,6 @@ function bindEvents() {
   renderComposerMode();
 
   els.transactionAmountInput.addEventListener('input', () => { const a = parseAmount(els.transactionAmountInput.value); els.transactionAmountInput.value = a > 0 ? formatPlainNumber(a) : ''; });
-  els.toggleSavingsButton.forEach(b => b.addEventListener('click', () => { showSavings = !showSavings; renderTotals(); }));
   els.archiveButton.addEventListener('click', () => { els.archiveView.classList.remove('hidden'); renderArchive(); history.pushState({ page: 'archive' }, ''); });
   els.closeArchiveButton && els.closeArchiveButton.addEventListener('click', () => els.archiveView.classList.add('hidden'));
   els.paydayAlertContainer && els.paydayAlertContainer.addEventListener('click', () => { const ws = getActiveWorkspace(); if (!ws) return; if (typeof els.resetDialog.showModal === 'function') { els.resetDialog.showModal(); return; } refreshWorkspace(ws); });
@@ -864,7 +861,7 @@ function bindEvents() {
 
   els.roomSettingsResetBtn && els.roomSettingsResetBtn.addEventListener('click', () => {
     const ws = getActiveWorkspace(); if (!ws) return;
-    openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pesan chat, pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan privat tetap aman.', 'Ya, reset', () => {
+    openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pesan chat, pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan tetap aman.', 'Ya, reset', () => {
       ws.transactions = [];
       ws.chat = [];
       saveState(); render();
@@ -1165,7 +1162,7 @@ function renderTotals() {
   els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
   els.expenseTotal.forEach(el => el.textContent = formatSummaryCurrency(t.expense));
   els.balanceTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
-  els.savingTotal.forEach(el => el.textContent = showSavings ? formatSummaryCurrency(t.saving) : '***');
+  els.savingTotal.forEach(el => el.textContent = formatSummaryCurrency(t.saving));
 }
 
 function renderTypeSwitch() {
@@ -1189,7 +1186,7 @@ function renderFeed() {
   const ws = getActiveWorkspace(); if (!ws) return;
   checkPaydayAlert(ws);
   updateWishlistBanner();
-  const txs = ws.transactions.filter(t => t.type === 'saving' ? t.privateOwnerEmail === state.currentEmail : t.periodId === ws.activePeriodId).map(t => ({ kind: 'finance', data: t }));
+  const txs = ws.transactions.filter(t => t.type === 'saving' || t.periodId === ws.activePeriodId).map(t => ({ kind: 'finance', data: t }));
   const chats = (ws.chat || []).map(c => ({ kind: 'chat', data: c }));
   const items = txs.concat(chats).sort((a, b) => new Date(a.data.createdAt) - new Date(b.data.createdAt));
   els.chatFeed.innerHTML = '';
@@ -1259,7 +1256,7 @@ function renderArchive() {
     + '<div class="archive-recap-grid">'
     + '<div class="archive-recap-item income-text"><span>Pemasukan</span><strong>' + formatCurrency(tot.income) + '</strong></div>'
     + '<div class="archive-recap-item expense-text"><span>Pengeluaran</span><strong>' + formatCurrency(tot.expense) + '</strong></div>'
-    + '<div class="archive-recap-item saving-text"><span>Tabungan</span><strong>' + (showSavings ? formatCurrency(tot.saving) : '***') + '</strong></div>'
+    + '<div class="archive-recap-item saving-text"><span>Tabungan</span><strong>' + formatCurrency(tot.saving) + '</strong></div>'
     + '</div>';
   els.archiveFeed.append(recap);
   if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan dari periode sebelumnya.'; els.archiveFeed.append(e); els.archiveFeed.scrollTop = els.archiveFeed.scrollHeight; return; }
@@ -1272,7 +1269,7 @@ function calculateAllTotals(ws) {
   return (ws.transactions || []).reduce((tot, t) => {
     if (t.type === 'income') tot.income += t.amount;
     if (t.type === 'expense') tot.expense += t.amount;
-    if (t.type === 'saving' && t.privateOwnerEmail === state.currentEmail) tot.saving += t.amount;
+    if (t.type === 'saving') tot.saving += t.amount;
     return tot;
   }, { income: 0, expense: 0, saving: 0 });
 }
@@ -1411,12 +1408,12 @@ function refreshWorkspace(ws) {
   const op = getActivePeriod(ws); if (op) op.endedAt = new Date().toISOString();
   const np = { id: createId('period'), label: 'Periode ' + (ws.periods.length + 1), startedAt: new Date().toISOString(), endedAt: null };
   ws.periods.push(np); ws.activePeriodId = np.id;
-  saveState(); render(); showToast('Periode baru dimulai. Tabungan privat tetap tersimpan.');
+  saveState(); render(); showToast('Periode baru dimulai. Tabungan tetap tersimpan.');
 }
 
 function calculateTotals(ws) {
   return ws.transactions.reduce((tot, t) => {
-    if (t.type === 'saving' && t.privateOwnerEmail === state.currentEmail) { tot.saving += t.amount; return tot; }
+    if (t.type === 'saving') { tot.saving += t.amount; return tot; }
     if (t.type === 'income') { tot.income += t.amount; return tot; }
     if (t.periodId !== ws.activePeriodId) return tot;
     if (t.type === 'expense') tot.expense += t.amount;

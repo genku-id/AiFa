@@ -280,27 +280,23 @@
                 <button class="mode-dots-btn" id="modeDotsBtn" type="button" aria-label="Ganti mode (Keuangan/Chat)" title="Mode">
                   <svg viewBox="0 0 24 24" aria-hidden="true" width="16" height="16" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>
                 </button>
-                <div id="composerFinanceBox">
-                  <div class="type-switch" role="tablist" aria-label="Jenis transaksi">
-                    <button class="switch-option active" data-type="expense" type="button">Pengeluaran</button>
-                    <button class="switch-option" data-type="income" type="button">Pendapatan</button>
-                    <button class="switch-option private" data-type="saving" type="button">Tabungan</button>
-                  </div>
-                  <div class="composer-row">
-                    <input id="transactionNoteInput" type="text" placeholder="Contoh: makan siang, gaji, tabung motor" required />
-                    <input id="transactionAmountInput" type="text" inputmode="numeric" placeholder="Nominal" required />
-                    <button class="send-button" type="submit" title="Kirim">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-                    </button>
-                  </div>
+                <div class="type-switch" id="composerFinanceTypes" role="tablist" aria-label="Jenis transaksi">
+                  <button class="switch-option active" data-type="expense" type="button">Pengeluaran</button>
+                  <button class="switch-option" data-type="income" type="button">Pendapatan</button>
+                  <button class="switch-option private" data-type="saving" type="button">Tabungan</button>
                 </div>
-                <div id="composerChatBox" class="hidden">
-                  <div class="composer-row">
-                    <input id="chatInput" type="text" placeholder="Ketik pesan..." required />
-                    <button class="send-button" type="submit" title="Kirim">
-                      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
-                    </button>
-                  </div>
+                <div class="composer-row" id="composerFinanceInputs">
+                  <input id="transactionNoteInput" type="text" placeholder="Contoh: makan siang, gaji, tabung motor" required />
+                  <input id="transactionAmountInput" type="text" inputmode="numeric" placeholder="Nominal" required />
+                  <button class="send-button" type="submit" title="Kirim">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                  </button>
+                </div>
+                <div class="composer-row" id="composerChatBox">
+                  <input id="chatInput" type="text" placeholder="Ketik pesan..." required />
+                  <button class="send-button" type="submit" title="Kirim">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2L11 13" /><path d="M22 2l-7 20-4-9-9-4 20-7z" /></svg>
+                  </button>
                 </div>
               </div>
             </form>

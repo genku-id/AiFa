@@ -64,7 +64,7 @@ const els = {
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
   modeDotsBtn: document.querySelector('#modeDotsBtn'), modeMenu: document.querySelector('#modeMenu'), modeMenuItems: [...document.querySelectorAll('.mode-menu-item')],
-  composerFinanceBox: document.querySelector('#composerFinanceBox'), composerChatBox: document.querySelector('#composerChatBox'), chatInput: document.querySelector('#chatInput'),
+  composerFinanceTypes: document.querySelector('#composerFinanceTypes'), composerFinanceInputs: document.querySelector('#composerFinanceInputs'), composerChatBox: document.querySelector('#composerChatBox'), chatInput: document.querySelector('#chatInput'),
   editChatDialog: document.querySelector('#editChatDialog'), editChatForm: document.querySelector('#editChatForm'), editChatInput: document.querySelector('#editChatInput'),
   resetDialog: document.querySelector('#resetDialog'), confirmRefreshButton: document.querySelector('#confirmRefreshButton'),
   toast: document.querySelector('#toast'), switchOptions: [...document.querySelectorAll('.switch-option')],
@@ -1201,14 +1201,16 @@ function renderFeed() {
 
 function renderComposerMode() {
   if (composerMode === 'chat') {
-    els.composerFinanceBox.classList.add('hidden');
+    els.composerFinanceTypes.classList.add('hidden');
+    els.composerFinanceInputs.classList.add('hidden');
     els.composerChatBox.classList.remove('hidden');
     els.transactionNoteInput.disabled = true;
     els.transactionAmountInput.disabled = true;
     els.chatInput.disabled = false;
   } else {
     els.composerChatBox.classList.add('hidden');
-    els.composerFinanceBox.classList.remove('hidden');
+    els.composerFinanceTypes.classList.remove('hidden');
+    els.composerFinanceInputs.classList.remove('hidden');
     els.chatInput.disabled = true;
     els.transactionNoteInput.disabled = false;
     els.transactionAmountInput.disabled = false;

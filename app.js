@@ -1392,7 +1392,11 @@ function formatTime(v) { return new Intl.DateTimeFormat('id-ID', { hour: '2-digi
 function initials(v) { return String(v).split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join(''); }
 function createId(prefix) { return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 9); }
 function escapeHtml(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
-function scrollFeedToBottom() { requestAnimationFrame(() => { els.chatFeed.scrollTop = els.chatFeed.scrollHeight; }); }
+function scrollFeedToBottom() {
+  if (!els.chatFeed) return;
+  els.chatFeed.scrollTop = els.chatFeed.scrollHeight;
+  requestAnimationFrame(() => { els.chatFeed.scrollTop = els.chatFeed.scrollHeight; });
+}
 let toastTimer = null;
 
 function showToast(msg) {

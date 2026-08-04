@@ -528,7 +528,6 @@ select:focus {
   gap: 9px;
   overflow: auto;
   padding: 2px 4px 14px;
-  scroll-behavior: smooth;
 }
 
 .demo-banner {

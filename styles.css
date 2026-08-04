@@ -304,9 +304,12 @@ select:focus {
 
 .content {
   order: 1;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
+  overflow: hidden;
 }
 
 .summary-header {
@@ -431,7 +434,8 @@ select:focus {
 .chat-panel {
   min-height: 0;
   display: grid;
-  grid-template-rows: minmax(310px, 1fr) auto;
+  grid-template-rows: minmax(0, 1fr) auto;
+  overflow: hidden;
   padding: 12px 10px 12px;
 }
 
@@ -466,7 +470,7 @@ select:focus {
 }
 
 .chat-feed {
-  min-height: 310px;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 9px;
@@ -665,7 +669,8 @@ select:focus {
 
 .sidebar-scroll-area {
   flex: 1;
-  overflow-y: auto;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: 13px;
@@ -893,11 +898,24 @@ select:focus {
   padding-top: 12px;
 }
 
+.members-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .member-list,
 .pending-list {
   display: grid;
   gap: 7px;
   margin-top: 9px;
+}
+
+.members-panel .member-list {
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
 }
 
 .member-chip,
@@ -1029,7 +1047,7 @@ select:focus {
   }
 
   .chat-panel {
-    grid-template-rows: minmax(380px, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
   }
 
   .toast {
@@ -1048,6 +1066,8 @@ select:focus {
 
   .sidebar {
     order: 0;
+    height: 100vh;
+    height: 100dvh;
     min-height: 100vh;
     margin: 0;
     border-top: 0;

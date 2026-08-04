@@ -26,6 +26,10 @@ const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
 let confirmAction = null;
+let longPressTimer = null;
+let contextTargetId = null;
+let editType = 'expense';
+let trxMenuOpenedAt = 0;
 let unsubWorkspaces = null, unsubUsers = null;
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
@@ -99,6 +103,15 @@ const els = {
   confirmDialogMessage: document.querySelector('#confirmDialogMessage'),
   confirmDialogOk: document.querySelector('#confirmDialogOk'),
   confirmDialogCancel: document.querySelector('#confirmDialogCancel'),
+  trxMenu: document.querySelector('#trxMenu'),
+  trxMenuEdit: document.querySelector('#trxMenuEdit'),
+  trxMenuDelete: document.querySelector('#trxMenuDelete'),
+  editTransactionDialog: document.querySelector('#editTransactionDialog'),
+  editTransactionForm: document.querySelector('#editTransactionForm'),
+  editTypeSwitch: document.querySelector('#editTypeSwitch'),
+  editTypeOptions: document.querySelectorAll('#editTypeSwitch .switch-option'),
+  editNoteInput: document.querySelector('#editNoteInput'),
+  editAmountInput: document.querySelector('#editAmountInput'),
 };
 
 boot();
@@ -548,6 +561,42 @@ function bindEvents() {
     if (cb) cb();
   });
   els.confirmDialogCancel && els.confirmDialogCancel.addEventListener('click', () => { confirmAction = null; });
+
+  els.trxMenuEdit && els.trxMenuEdit.addEventListener('click', () => {
+    const t = findTrxById(contextTargetId);
+    closeTrxMenu();
+    if (t) openEditTransaction(t);
+  });
+  els.trxMenuDelete && els.trxMenuDelete.addEventListener('click', () => {
+    const t = findTrxById(contextTargetId);
+    closeTrxMenu();
+    if (!t) return;
+    openConfirm('Hapus catatan ini?', 'Catatan "' + t.note + '" sebesar ' + formatCurrency(t.amount) + ' akan dihapus permanen.', 'Hapus', () => {
+      const ws = getActiveWorkspace(); if (!ws) return;
+      ws.transactions = ws.transactions.filter(x => x.id !== t.id);
+      saveState(); render();
+      showToast('Catatan dihapus.');
+    });
+  });
+  document.addEventListener('click', (e) => {
+    if (els.trxMenu && !els.trxMenu.contains(e.target)) {
+      if (Date.now() - trxMenuOpenedAt > 350) closeTrxMenu();
+    }
+  });
+  els.editTypeOptions.forEach(b => b.addEventListener('click', () => { editType = b.dataset.type; renderEditTypeSwitch(); }));
+  els.editTransactionForm && els.editTransactionForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const t = findTrxById(contextTargetId); const ws = getActiveWorkspace();
+    if (!t || !ws) return;
+    const note = els.editNoteInput.value.trim();
+    const amount = parseAmount(els.editAmountInput.value);
+    if (!note || amount <= 0) return;
+    t.note = note; t.amount = amount; t.type = editType;
+    if (editType === 'saving') { t.periodId = null; t.privateOwnerEmail = state.currentEmail; }
+    else { t.periodId = ws.activePeriodId; t.privateOwnerEmail = null; }
+    saveState(); render(); els.editTransactionDialog.close();
+    showToast('Catatan diperbarui.');
+  });
 }
 
 function beginNewAccount(email) {
@@ -809,7 +858,61 @@ function createTransactionBubble(t) {
   if (author?.avatarUrl) av = '<span class="mini-avatar" style="background-image:url(' + author.avatarUrl + ');background-size:cover;background-position:center"></span>';
   msg.className = 'message' + (mine ? ' mine' : '');
   msg.innerHTML = av + '<div class="bubble"><div class="bubble-header"><strong>' + escapeHtml(author?.name || t.actorEmail) + '</strong><span>' + formatTime(t.createdAt) + '</span></div><div>' + escapeHtml(t.note) + '</div><div class="bubble-total"><span class="tag ' + t.type + '">' + TYPE_LABELS[t.type] + '</span><span>' + formatCurrency(t.amount) + '</span></div></div>';
+  if (mine) {
+    msg.dataset.id = t.id;
+    msg.addEventListener('contextmenu', (e) => { e.preventDefault(); openTrxMenu(t.id, e.clientX, e.clientY); });
+    msg.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      clearTimeout(longPressTimer);
+      longPressTimer = setTimeout(() => {
+        const p = e.touches[0];
+        openTrxMenu(t.id, p.clientX, p.clientY);
+        try { e.preventDefault(); } catch (err) { /* noop */ }
+      }, 500);
+    }, { passive: false });
+    msg.addEventListener('touchmove', () => clearTimeout(longPressTimer));
+    msg.addEventListener('touchend', () => clearTimeout(longPressTimer));
+    msg.addEventListener('touchcancel', () => clearTimeout(longPressTimer));
+  }
   return msg;
+}
+
+function findTrxById(id) {
+  const ws = getActiveWorkspace(); if (!ws) return null;
+  return (ws.transactions || []).find(x => x.id === id) || null;
+}
+
+function openTrxMenu(id, x, y) {
+  if (!els.trxMenu) return;
+  contextTargetId = id;
+  const menu = els.trxMenu;
+  menu.classList.remove('hidden');
+  trxMenuOpenedAt = Date.now();
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  const mw = menu.offsetWidth || 140, mh = menu.offsetHeight || 88;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  menu.style.left = Math.max(8, Math.min(x, vw - mw - 8)) + 'px';
+  menu.style.top = Math.max(8, Math.min(y, vh - mh - 8)) + 'px';
+}
+
+function closeTrxMenu() {
+  if (els.trxMenu) els.trxMenu.classList.add('hidden');
+  contextTargetId = null;
+}
+
+function openEditTransaction(t) {
+  if (!els.editTransactionDialog) return;
+  contextTargetId = t.id;
+  editType = t.type;
+  els.editNoteInput.value = t.note || '';
+  els.editAmountInput.value = t.amount > 0 ? formatPlainNumber(t.amount) : '';
+  renderEditTypeSwitch();
+  els.editTransactionDialog.showModal();
+}
+
+function renderEditTypeSwitch() {
+  els.editTypeOptions.forEach(b => b.classList.toggle('active', b.dataset.type === editType));
 }
 
 function refreshWorkspace(ws) {

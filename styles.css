@@ -75,6 +75,42 @@ p {
   display: none !important;
 }
 
+.trx-menu {
+  position: fixed;
+  z-index: 400;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 6px 24px rgba(34,57,46,0.16);
+  overflow: hidden;
+  min-width: 132px;
+  padding: 4px;
+}
+.trx-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 9px 12px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 8px;
+  text-align: left;
+}
+.trx-menu-item svg { color: var(--muted); flex-shrink: 0; }
+.trx-menu-item:hover { background: var(--primary-soft); }
+.trx-menu-item.danger { color: #d9534f; }
+.trx-menu-item.danger svg { color: #d9534f; }
+.trx-menu-item.danger:hover { background: #fdecea; }
+
+
 .marquee-text {
   display: inline-block;
   padding-left: 100%;

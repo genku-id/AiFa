@@ -731,7 +731,6 @@ select:focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
-  margin-bottom: 8px;
 }
 
 .switch-option {
@@ -794,11 +793,20 @@ select:focus {
   display: flex;
   align-items: stretch;
   gap: 6px;
-  margin-bottom: 8px;
+}
+#composerFinanceBox,
+#composerChatBox {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 .mode-dots-btn {
   min-width: 34px;
   width: 34px;
+  align-self: flex-start;
+  min-height: 34px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #f3f6ef;
@@ -810,11 +818,6 @@ select:focus {
   padding: 0;
 }
 .mode-dots-btn:hover { background: var(--primary-soft); }
-.type-row .type-switch {
-  flex: 1;
-  min-width: 0;
-  margin-bottom: 0;
-}
 .mode-menu-item.active { background: var(--primary-soft); }
 .mode-menu-check {
   margin-left: auto;

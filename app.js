@@ -45,7 +45,7 @@ const els = {
   incomeTotal: document.querySelectorAll('.incomeTotal'), expenseTotal: document.querySelectorAll('.expenseTotal'),
   balanceTotal: document.querySelectorAll('.balanceTotal'), savingTotal: document.querySelectorAll('.savingTotal'),
   toggleSavingsButton: document.querySelectorAll('.toggleSavingsButton'),
-  archiveButton: document.querySelector('#archiveButton'), clearDraftButton: document.querySelector('#clearDraftButton'),
+  archiveButton: document.querySelector('#archiveButton'),
   feedTitle: document.querySelector('#feedTitle'), feedSubtitle: document.querySelector('#feedSubtitle'),
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
@@ -397,7 +397,6 @@ function bindEvents() {
   });
 
   els.transactionAmountInput.addEventListener('input', () => { const a = parseAmount(els.transactionAmountInput.value); els.transactionAmountInput.value = a > 0 ? formatPlainNumber(a) : ''; });
-  els.clearDraftButton.addEventListener('click', () => { els.transactionNoteInput.value = ''; els.transactionAmountInput.value = ''; els.transactionNoteInput.focus(); });
   els.toggleSavingsButton.forEach(b => b.addEventListener('click', () => { showSavings = !showSavings; renderTotals(); }));
   els.archiveButton.addEventListener('click', () => { els.archiveView.classList.remove('hidden'); renderArchive(); history.pushState({ page: 'archive' }, ''); });
   els.closeArchiveButton && els.closeArchiveButton.addEventListener('click', () => els.archiveView.classList.add('hidden'));

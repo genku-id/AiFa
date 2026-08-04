@@ -597,7 +597,7 @@ function renderFeed() {
   els.chatFeed.innerHTML = '';
   if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan.'; els.chatFeed.append(e); return; }
   const f = document.createDocumentFragment();
-  txs.forEach(t => { f.append(createTransactionBubble(t)); f.append(createSystemReply(t)); });
+  txs.forEach(t => { f.append(createTransactionBubble(t)); });
   els.chatFeed.append(f); scrollFeedToBottom();
 }
 
@@ -607,7 +607,7 @@ function renderArchive() {
   els.archiveFeed.innerHTML = '';
   if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada arsip.'; els.archiveFeed.append(e); return; }
   const f = document.createDocumentFragment();
-  txs.forEach(t => { f.append(createTransactionBubble(t)); f.append(createSystemReply(t)); });
+  txs.forEach(t => { f.append(createTransactionBubble(t)); });
   els.archiveFeed.append(f); els.archiveFeed.scrollTop = els.archiveFeed.scrollHeight;
 }
 
@@ -619,12 +619,6 @@ function createTransactionBubble(t) {
   if (author?.avatarUrl) av = '<span class="mini-avatar" style="background-image:url(' + author.avatarUrl + ');background-size:cover;background-position:center"></span>';
   msg.className = 'message' + (mine ? ' mine' : '');
   msg.innerHTML = av + '<div class="bubble"><div class="bubble-header"><strong>' + escapeHtml(author?.name || t.actorEmail) + '</strong><span>' + formatTime(t.createdAt) + '</span></div><div>' + escapeHtml(t.note) + '</div><div class="bubble-total"><span class="tag ' + t.type + '">' + TYPE_LABELS[t.type] + '</span><span>' + formatCurrency(t.amount) + '</span></div></div>';
-  return msg;
-}
-
-function createSystemReply(t) {
-  const msg = document.createElement('article'); msg.className = 'message system';
-  msg.innerHTML = '<div class="bubble">Tercatat ' + formatCurrency(t.amount) + ' untuk ' + escapeHtml(t.note) + ' dan ' + (t.type === 'income' ? 'menambah pendapatan' : 'menambah pengeluaran') + '.</div>';
   return msg;
 }
 

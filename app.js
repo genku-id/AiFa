@@ -1230,4 +1230,15 @@ function createId(prefix) { return prefix + '_' + Date.now().toString(36) + '_' 
 function escapeHtml(v) { return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;'); }
 function scrollFeedToBottom() { requestAnimationFrame(() => { els.chatFeed.scrollTop = els.chatFeed.scrollHeight; }); }
 let toastTimer = null;
-function showToast(msg) { els.toast.textContent = msg; els.toast.classList.remove('hidden'); clearTimeout(toastTimer); toastTimer = setTimeout(() => els.toast.classList.add('hidden'), 2600); }
+
+function showToast(msg) {
+  els.toast.textContent = msg;
+  els.toast.classList.remove('hiding');
+  els.toast.classList.remove('hidden');
+  void els.toast.offsetWidth;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    els.toast.classList.add('hiding');
+    setTimeout(() => els.toast.classList.add('hidden'), 600);
+  }, 2200);
+}

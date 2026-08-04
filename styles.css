@@ -452,7 +452,7 @@ select:focus {
   width: min(86%, 520px);
   display: flex;
   flex-direction: row;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 8px;
 }
 

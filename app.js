@@ -960,12 +960,31 @@ function renderFeed() {
 
 function renderArchive() {
   const ws = getActiveWorkspace(); if (!ws) return;
-  const txs = ws.transactions.filter(t => t.type !== 'saving' && t.periodId !== ws.activePeriodId).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   els.archiveFeed.innerHTML = '';
-  if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada arsip.'; els.archiveFeed.append(e); return; }
+  const txs = ws.transactions.filter(t => t.type !== 'saving' && t.periodId !== ws.activePeriodId).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  const recap = document.createElement('div');
+  recap.className = 'archive-recap';
+  const tot = calculateAllTotals(ws);
+  recap.innerHTML = '<div class="archive-recap-title">Rekapan Semua Catatan</div>'
+    + '<div class="archive-recap-grid">'
+    + '<div class="archive-recap-item income-text"><span>Pemasukan</span><strong>' + formatCurrency(tot.income) + '</strong></div>'
+    + '<div class="archive-recap-item expense-text"><span>Pengeluaran</span><strong>' + formatCurrency(tot.expense) + '</strong></div>'
+    + '<div class="archive-recap-item saving-text"><span>Tabungan</span><strong>' + (showSavings ? formatCurrency(tot.saving) : '***') + '</strong></div>'
+    + '</div>';
+  els.archiveFeed.append(recap);
+  if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan dari periode sebelumnya.'; els.archiveFeed.append(e); els.archiveFeed.scrollTop = els.archiveFeed.scrollHeight; return; }
   const f = document.createDocumentFragment();
   txs.forEach(t => { f.append(createTransactionBubble(t)); });
   els.archiveFeed.append(f); els.archiveFeed.scrollTop = els.archiveFeed.scrollHeight;
+}
+
+function calculateAllTotals(ws) {
+  return (ws.transactions || []).reduce((tot, t) => {
+    if (t.type === 'income') tot.income += t.amount;
+    if (t.type === 'expense') tot.expense += t.amount;
+    if (t.type === 'saving' && t.privateOwnerEmail === state.currentEmail) tot.saving += t.amount;
+    return tot;
+  }, { income: 0, expense: 0, saving: 0 });
 }
 
 function createTransactionBubble(t) {

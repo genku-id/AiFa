@@ -492,6 +492,41 @@ select:focus {
   scroll-behavior: smooth;
 }
 
+.archive-recap {
+  margin: 16px 12px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+}
+.archive-recap-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 10px;
+}
+.archive-recap-grid {
+  display: flex;
+  gap: 8px;
+}
+.archive-recap-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.archive-recap-item span {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+.archive-recap-item strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
 .empty-state {
   max-width: 320px;
   margin: auto;

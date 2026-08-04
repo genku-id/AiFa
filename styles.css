@@ -767,8 +767,9 @@ select:focus {
   color: var(--muted);
 }
 .sidebar-footer {
+  flex-shrink: 0;
   margin-top: auto;
-  padding-top: 10px;
+  padding: 10px 12px 12px;
   border-top: 1px solid var(--line);
 }
 .sidebar-logout-btn {
@@ -1082,6 +1083,8 @@ html {
 .sidebar {
   display: none !important;
   margin: 0;
+  height: 100vh;
+  height: 100dvh;
   min-height: 100vh;
   border-radius: 0;
 }
@@ -1537,13 +1540,13 @@ svg {
 .ws-dropdown-add button:hover { background: #1a3529; }
 
 /* ── Profile bubble menu ── */
-.profile-bubble-wrap { position: relative; }
+.profile-bubble-wrap { position: relative; width: 100%; }
 .profile-bubble-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   width: 100%;
-  padding: 8px 10px;
+  padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   background: var(--panel-soft);
@@ -1552,6 +1555,16 @@ svg {
   transition: background 0.15s;
 }
 .profile-bubble-trigger:hover { background: var(--primary-soft); border-color: var(--primary); }
+.profile-bubble-wrap .sidebar-avatar {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  font-size: 0.85rem;
+}
+.sidebar-account-text strong {
+  font-size: 0.95rem;
+  color: var(--ink);
+}
 .bubble-chevron { margin-left: auto; flex-shrink: 0; transition: transform 0.2s; color: var(--muted); }
 .profile-bubble-trigger.open .bubble-chevron { transform: rotate(180deg); }
 .profile-bubble-menu {

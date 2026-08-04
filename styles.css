@@ -450,12 +450,15 @@ select:focus {
 
 .message {
   width: min(86%, 520px);
-  display: grid;
-  gap: 5px;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;
+  gap: 8px;
 }
 
 .message.mine {
   align-self: flex-end;
+  flex-direction: row-reverse;
 }
 
 .message.system {
@@ -886,15 +889,18 @@ select:focus {
 }
 
 .mini-avatar {
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
-  border-radius: 8px;
+  border-radius: 50%;
   background: #e6ece2;
   color: var(--primary);
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 900;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
 }
 
 .invite-row {

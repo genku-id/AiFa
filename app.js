@@ -1197,9 +1197,15 @@ function renderComposerMode() {
   if (composerMode === 'chat') {
     els.composerFinanceBox.classList.add('hidden');
     els.composerChatBox.classList.remove('hidden');
+    els.transactionNoteInput.disabled = true;
+    els.transactionAmountInput.disabled = true;
+    els.chatInput.disabled = false;
   } else {
     els.composerChatBox.classList.add('hidden');
     els.composerFinanceBox.classList.remove('hidden');
+    els.chatInput.disabled = true;
+    els.transactionNoteInput.disabled = false;
+    els.transactionAmountInput.disabled = false;
   }
   renderModeMenuCheck();
 }

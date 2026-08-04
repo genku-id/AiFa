@@ -395,7 +395,7 @@ select:focus {
 .chat-panel {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(310px, 1fr) auto;
+  grid-template-rows: minmax(310px, 1fr) auto;
   padding: 12px 10px 12px;
 }
 
@@ -985,7 +985,7 @@ select:focus {
   }
 
   .chat-panel {
-    grid-template-rows: auto minmax(380px, 1fr) auto;
+    grid-template-rows: minmax(380px, 1fr) auto;
   }
 
   .toast {

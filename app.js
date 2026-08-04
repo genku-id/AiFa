@@ -1179,8 +1179,8 @@ function refreshWorkspace(ws) {
 function calculateTotals(ws) {
   return ws.transactions.reduce((tot, t) => {
     if (t.type === 'saving' && t.privateOwnerEmail === state.currentEmail) { tot.saving += t.amount; return tot; }
+    if (t.type === 'income') { tot.income += t.amount; return tot; }
     if (t.periodId !== ws.activePeriodId) return tot;
-    if (t.type === 'income') tot.income += t.amount;
     if (t.type === 'expense') tot.expense += t.amount;
     return tot;
   }, { income: 0, expense: 0, saving: 0 });

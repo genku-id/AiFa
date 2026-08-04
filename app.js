@@ -60,7 +60,9 @@ const els = {
   profileForm: document.querySelector('#profileForm'), profileAvatarInput: document.querySelector('#profileAvatarInput'),
   profileAvatarPreview: document.querySelector('#profileAvatarPreview'), profileNameInput: document.querySelector('#profileNameInput'),
   profileRoleInput: document.querySelector('#profileRoleInput'), profilePaydayInput: document.querySelector('#profilePaydayInput'),
-  profileWaInput: document.querySelector('#profileWaInput'), paydayAlertContainer: document.querySelector('#paydayAlertContainer'),
+  profileWaInput: document.querySelector('#profileWaInput'),
+  reminderToggle: document.querySelector('#reminderToggle'),
+  reminderTimeInput: document.querySelector('#reminderTimeInput'), paydayAlertContainer: document.querySelector('#paydayAlertContainer'),
   archiveView: document.querySelector('#archiveView'), archiveFeed: document.querySelector('#archiveFeed'),
   closeArchiveButton: document.querySelector('#closeArchiveButton'), installBanner: document.querySelector('#installBanner'),
   installButton: document.querySelector('#installButton'), closeInstallBanner: document.querySelector('#closeInstallBanner'),
@@ -119,12 +121,14 @@ boot();
 function boot() {
   bindEvents();
   setupInstallBanner();
+  startReminderScheduler();
   window.addEventListener('popstate', handlePopState);
   if (state.currentEmail) {
     getDoc(doc(db, 'users', state.currentEmail)).then(snap => {
       if (snap.exists()) {
         state.users[state.currentEmail] = snap.data();
         subscribeToData(); render(); showStep('dashboard');
+        refreshReminderConfig();
         const p = new URLSearchParams(window.location.search);
         if (p.get('inviteId') && p.get('inviteName')) {
           joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName')).then(render);
@@ -446,6 +450,7 @@ function bindEvents() {
   els.openProfileButton && els.openProfileButton.addEventListener('click', () => {
     const user = state.users[state.currentEmail]; if (!user) return;
     els.profileNameInput.value = user.name || ''; els.profileRoleInput.value = user.role || ''; els.profilePaydayInput.value = user.payday || ''; els.profileWaInput.value = user.wa || '';
+    if (els.reminderToggle) { els.reminderToggle.checked = !!(user.reminder && user.reminder.enabled); els.reminderTimeInput.value = (user.reminder && user.reminder.time) || '20:00'; }
     if (user.avatarUrl) { els.profileAvatarPreview.style.backgroundImage = 'url(' + user.avatarUrl + ')'; els.profileAvatarPreview.textContent = ''; }
     else { els.profileAvatarPreview.style.backgroundImage = 'none'; els.profileAvatarPreview.textContent = initials(user.name || user.email); }
     els.profileDialog.showModal();
@@ -455,7 +460,8 @@ function bindEvents() {
     const user = state.users[state.currentEmail]; if (!user) return;
     user.name = els.profileNameInput.value.trim(); user.role = els.profileRoleInput.value.trim(); user.payday = parseInt(els.profilePaydayInput.value, 10) || null; user.wa = els.profileWaInput.value.trim();
     if (els.profileAvatarPreview.dataset.newAvatar) { user.avatarUrl = els.profileAvatarPreview.dataset.newAvatar; delete els.profileAvatarPreview.dataset.newAvatar; }
-    saveState(); render();
+    if (els.reminderToggle) { user.reminder = { enabled: els.reminderToggle.checked, time: els.reminderTimeInput.value || '20:00' }; }
+    saveState(); render(); syncReminder();
   });
 
   // Custom workspace dropdown toggle
@@ -1005,6 +1011,97 @@ function setupInstallBanner() {
 }
 
 function normalizeEmail(v) { return v.trim().toLowerCase(); }
+
+// ── Daily reminder ──
+function openReminderDB() {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('aifa-reminder', 1);
+    req.onupgradeneeded = () => { if (!req.result.objectStoreNames.contains('kv')) req.result.createObjectStore('kv'); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+}
+function reminderPut(key, value) {
+  return openReminderDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readwrite');
+    tx.objectStore('kv').put(value, key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  })).catch(() => {});
+}
+function reminderGet(key) {
+  return openReminderDB().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  })).catch(() => null);
+}
+function reminderConfig() {
+  const user = state.users[state.currentEmail];
+  return { enabled: !!(user && user.reminder && user.reminder.enabled), time: (user && user.reminder && user.reminder.time) || '', email: state.currentEmail || '' };
+}
+function syncReminder() {
+  const cfg = reminderConfig();
+  reminderPut('config', cfg);
+  if (cfg.enabled) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      registerPeriodicSync();
+      showToast('Pengingat harian aktif.');
+    } else {
+      requestNotificationPermission();
+    }
+  } else {
+    showToast('Pengingat harian dimatikan.');
+  }
+}
+function refreshReminderConfig() {
+  const cfg = reminderConfig();
+  reminderPut('config', cfg);
+  if (cfg.enabled && 'Notification' in window && Notification.permission === 'granted') registerPeriodicSync();
+}
+function requestNotificationPermission() {
+  if (!('Notification' in window)) { showToast('Browser ini tidak mendukung notifikasi.'); return; }
+  Notification.requestPermission().then(perm => {
+    if (perm === 'granted') { registerPeriodicSync(); showToast('Notifikasi diizinkan. Pengingat harian aktif.'); }
+    else { showToast('Izin notifikasi ditolak. Nyalakan lewat pengaturan browser.'); }
+  }).catch(() => {});
+}
+async function registerPeriodicSync() {
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.ready;
+      if (reg.periodicSync) await reg.periodicSync.register('daily-reminder', { minInterval: 24 * 60 * 60 * 1000 });
+    }
+  } catch (err) { /* not supported or not installed */ }
+}
+function startReminderScheduler() {
+  if (!('Notification' in window)) return;
+  setInterval(checkDailyReminder, 30000);
+}
+function checkDailyReminder() {
+  const user = state.users[state.currentEmail];
+  if (!user || !user.reminder || !user.reminder.enabled || !user.reminder.time) return;
+  if (Notification.permission !== 'granted') return;
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+  const hhmm = now.toTimeString().slice(0, 5);
+  if (hhmm !== user.reminder.time) return;
+  const lastKey = 'aifa.reminder.last.' + state.currentEmail;
+  if (localStorage.getItem(lastKey) === today) return;
+  localStorage.setItem(lastKey, today);
+  showDailyNotification();
+}
+function showDailyNotification() {
+  const ws = getActiveWorkspace();
+  const body = ws ? 'Catat pengeluaran hari ini di ruang "' + ws.name + '" agar tidak lupa!' : 'Catat pengeluaran hari ini agar tidak lupa!';
+  const opts = { body, icon: './icon-192.png', badge: './icon-192.png', tag: 'aifa-daily' };
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.ready.then(reg => reg.showNotification('AiFa - Jangan lupa catat!', Object.assign({}, opts, { data: { url: location.origin + location.pathname } }))).catch(() => {});
+  } else if ('Notification' in window) {
+    try { new Notification('AiFa - Jangan lupa catat!', opts); } catch (err) { /* noop */ }
+  }
+}
 function parseAmount(v) { return Number(String(v).replace(/[^\d]/g, '') || 0); }
 function formatPlainNumber(v) { return new Intl.NumberFormat('id-ID').format(v); }
 function formatCurrency(v) { return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(v); }

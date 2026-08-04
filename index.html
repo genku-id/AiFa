@@ -320,6 +320,14 @@
         <input id="profilePaydayInput" type="number" min="1" max="31" style="width:100%;margin-top:4px;" placeholder="Contoh: 25" />
         <label for="profileWaInput" class="field-label" style="text-align:left;display:block;margin-top:12px;">Nomor WhatsApp</label>
         <input id="profileWaInput" type="text" inputmode="numeric" style="width:100%;margin-top:4px;" placeholder="Contoh: 628123456789" />
+        <label class="field-label" style="text-align:left;display:block;margin-top:12px;">Pengingat Harian</label>
+        <div style="display:flex;align-items:center;gap:10px;margin-top:4px;">
+          <label style="display:flex;align-items:center;gap:6px;font-size:0.85rem;cursor:pointer;">
+            <input id="reminderToggle" type="checkbox" /> Aktifkan
+          </label>
+          <input id="reminderTimeInput" type="time" style="flex:1;" />
+        </div>
+        <p style="font-size:0.72rem;color:var(--muted);margin:6px 0 0;">Notifikasi muncul setiap hari pada jam tersebut. Muncul selama aplikasi terbuka, atau otomatis jika aplikasi terinstal & diizinkan.</p>
         <div class="dialog-actions" style="margin-top:20px;">
           <button class="secondary-button" value="cancel" type="button" onclick="document.getElementById('profileDialog').close()">Batal</button>
           <button class="primary-button" type="submit">Simpan</button>

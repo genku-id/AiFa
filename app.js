@@ -161,13 +161,19 @@ function boot() {
   setupInstallBanner();
   startReminderScheduler();
   window.addEventListener('popstate', handlePopState);
+  const splashShownAt = Date.now();
+  const hideSplash = () => {
+    if (!els.splashView) return;
+    const wait = Math.max(0, 1000 - (Date.now() - splashShownAt));
+    setTimeout(() => { if (els.splashView) els.splashView.classList.add('hidden'); }, wait);
+  };
   if (state.currentEmail) {
     if (els.splashView) { els.splashView.classList.remove('hidden'); els.authView.classList.add('hidden'); }
     getDoc(doc(db, 'users', state.currentEmail)).then(snap => {
       if (snap.exists()) {
         state.users[state.currentEmail] = snap.data();
         subscribeToData(); render(); showStep('dashboard');
-        if (els.splashView) els.splashView.classList.add('hidden');
+        hideSplash();
         refreshReminderConfig();
         const p = new URLSearchParams(window.location.search);
         if (p.get('inviteId') && p.get('inviteName')) {
@@ -176,17 +182,17 @@ function boot() {
       } else {
         state.currentEmail = null;
         saveState();
-        if (els.splashView) els.splashView.classList.add('hidden');
+        hideSplash();
         showStep('auth');
       }
     }).catch((err) => {
       console.error('boot getUser error:', err);
+      hideSplash();
       showToast('Gagal terhubung ke server. Cek koneksi & izin Firestore.');
-      if (els.splashView) els.splashView.classList.add('hidden');
       showStep('auth');
     });
   } else {
-    if (els.splashView) els.splashView.classList.add('hidden');
+    hideSplash();
     showStep('auth');
   }
 }

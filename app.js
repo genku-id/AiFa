@@ -26,6 +26,8 @@ const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
 let pendingSetPasswordEmail = null;
+let demoMode = false;
+const DEMO_EMAIL = 'fulan@demo.aifa';
 let confirmAction = null;
 let longPressTimer = null;
 let contextTargetId = null;
@@ -37,6 +39,7 @@ const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
   stepAuth: document.querySelector('#stepAuth'), stepProfile: document.querySelector('#stepProfile'), stepWorkspace: document.querySelector('#stepWorkspace'),
   loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'), passwordInput: document.querySelector('#passwordInput'), loginError: document.querySelector('#loginError'), forgotPasswordLink: document.querySelector('#forgotPasswordLink'),
+  demoButton: document.querySelector('#demoButton'), demoBanner: document.querySelector('#demoBanner'), demoExitBtn: document.querySelector('#demoExitBtn'),
   onboardProfileForm: document.querySelector('#onboardProfileForm'), onboardAvatarPreview: document.querySelector('#onboardAvatarPreview'),
   onboardAvatarInput: document.querySelector('#onboardAvatarInput'), onboardNameInput: document.querySelector('#onboardNameInput'),
   onboardRoleInput: document.querySelector('#onboardRoleInput'), onboardWaInput: document.querySelector('#onboardWaInput'),
@@ -227,6 +230,7 @@ function handlePopState(e) {
 
 
 function subscribeToData() {
+  if (demoMode) return;
   if (!state.currentEmail) return;
   if (unsubWorkspaces) unsubWorkspaces();
   if (unsubUsers) unsubUsers();
@@ -308,6 +312,114 @@ async function verifyPassword(password, stored) {
   return (await hashPassword(password, stored.salt)) === stored.hash;
 }
 function hasPassword(user) { return !!(user && user.password && user.password.salt && user.password.hash); }
+
+function buildDemoData() {
+  const now = Date.now();
+  const day = 86400000;
+  function u(email, name, role, wa) {
+    return { email, name, role, wa: wa || null, avatarUrl: null, tier: 'free', createdAt: new Date(now - 90 * day).toISOString() };
+  }
+  const fulan = u(DEMO_EMAIL, 'Fulan', 'Suami', '6281111111111');
+  const fulanah = u('fulanah@demo.aifa', 'Fulanah', 'Istri', '6282222222222');
+  const fulanati = u('fulanati@demo.aifa', 'Fulanati', 'Kakak', null);
+  const fulanatiti = u('fulanatiti@demo.aifa', 'Fulanatiti', 'Adik', null);
+  const fulanation = u('fulanation@demo.aifa', 'Fulanation', 'Keponakan', null);
+  const ful = u('ful@demo.aifa', 'Ful', 'Teman', null);
+  const fulaa = u('fulaa@demo.aifa', 'Fulaa', 'Teman', null);
+  const fulanansi = u('fulanansi@demo.aifa', 'Fulanansi', 'Kolega', null);
+  const allUsers = [fulan, fulanah, fulanati, fulanatiti, fulanation, ful, fulaa, fulanansi];
+  const users = {};
+  allUsers.forEach(x => { users[x.email] = x; });
+
+  function trx(type, amount, note, actor, periodId, offsetDays, privateOwner) {
+    return { id: 'd' + Math.random().toString(36).slice(2, 10), type, amount, note, actorEmail: actor.email, periodId, privateOwnerEmail: privateOwner || null, createdAt: new Date(now - offsetDays * day).toISOString() };
+  }
+  function mkRoom(id, name, members, ownerEmail) {
+    const p1 = { id: id + '-p1', label: 'Periode 1', startedAt: new Date(now - 70 * day).toISOString(), endedAt: new Date(now - 40 * day).toISOString() };
+    const p2 = { id: id + '-p2', label: 'Periode 2', startedAt: new Date(now - 40 * day).toISOString(), endedAt: new Date(now - 10 * day).toISOString() };
+    const p3 = { id: id + '-p3', label: 'Periode 3', startedAt: new Date(now - 10 * day).toISOString(), endedAt: null };
+    return { id, name, ownerEmail, members, invites: [], activePeriodId: p3.id, periods: [p1, p2, p3], transactions: [], createdAt: new Date(now - 70 * day).toISOString(), wishlist: [] };
+  }
+
+  const r1 = mkRoom('demo-pribadi', 'Pribadi', [fulan.email], fulan.email);
+  r1.transactions = [
+    trx('income', 5000000, 'Gaji bulanan', fulan, r1.activePeriodId, 8),
+    trx('expense', 1200000, 'Kontrakan kos', fulan, r1.activePeriodId, 8),
+    trx('expense', 350000, 'Sembako', fulan, r1.activePeriodId, 5),
+    trx('saving', 500000, 'Tabungan motor', fulan, null, 5, fulan.email),
+    trx('income', 5000000, 'Gaji bulanan', fulan, r1.periods[1].id, 38),
+    trx('expense', 1200000, 'Kontrakan kos', fulan, r1.periods[1].id, 38),
+    trx('expense', 400000, 'Token listrik', fulan, r1.periods[1].id, 30),
+    trx('saving', 500000, 'Tabungan motor', fulan, null, 30, fulan.email),
+    trx('income', 4500000, 'Gaji bulanan', fulan, r1.periods[0].id, 68),
+    trx('expense', 1200000, 'Kontrakan kos', fulan, r1.periods[0].id, 68),
+  ];
+
+  const r2 = mkRoom('demo-berdua', 'Berdua', [fulan.email, fulanah.email], fulan.email);
+  r2.transactions = [
+    trx('income', 5000000, 'Gaji Fulan', fulan, r2.activePeriodId, 8),
+    trx('income', 4500000, 'Gaji Fulanah', fulanah, r2.activePeriodId, 8),
+    trx('expense', 2500000, 'Belanja bulanan', fulanah, r2.activePeriodId, 7),
+    trx('expense', 450000, 'Listrik + air', fulan, r2.activePeriodId, 6),
+    trx('expense', 200000, 'Makan malam bareng', fulan, r2.activePeriodId, 2),
+    trx('saving', 1000000, 'Tabungan liburan', fulan, null, 6, fulan.email),
+    trx('saving', 1000000, 'Dana darurat', fulanah, null, 4, fulanah.email),
+    trx('income', 1500000, 'Bonus proyek', fulan, r2.periods[1].id, 35),
+    trx('income', 5000000, 'Gaji Fulan', fulan, r2.periods[1].id, 38),
+    trx('income', 4500000, 'Gaji Fulanah', fulanah, r2.periods[1].id, 38),
+    trx('expense', 2300000, 'Belanja bulanan', fulanah, r2.periods[1].id, 37),
+    trx('expense', 350000, 'Bensin', fulan, r2.periods[1].id, 25),
+    trx('saving', 1000000, 'Tabungan liburan', fulan, null, 30, fulan.email),
+    trx('income', 4800000, 'Gaji Fulan', fulan, r2.periods[0].id, 68),
+    trx('income', 4300000, 'Gaji Fulanah', fulanah, r2.periods[0].id, 68),
+    trx('expense', 2100000, 'Belanja bulanan', fulanah, r2.periods[0].id, 67),
+    trx('expense', 1500000, 'Bayar kontrakan', fulan, r2.periods[0].id, 66),
+  ];
+  r2.wishlist = [{ id: 'd-w1', name: 'Liburan ke Bali', price: 5000000, createdAt: new Date(now - 20 * day).toISOString() }];
+
+  const r3 = mkRoom('demo-banyak', 'Banyak Orang', allUsers.map(x => x.email), fulan.email);
+  r3.transactions = [
+    trx('income', 500000, 'Iuran kebersihan', fulanati, r3.activePeriodId, 6),
+    trx('income', 500000, 'Iuran keamanan', ful, r3.activePeriodId, 6),
+    trx('income', 300000, 'Iuran kas bersama', fulanah, r3.activePeriodId, 6),
+    trx('expense', 650000, 'Sembako bersama', fulanah, r3.activePeriodId, 5),
+    trx('expense', 800000, 'Servis AC rumah', fulanation, r3.activePeriodId, 4),
+    trx('expense', 250000, 'Snack arisan', fulaa, r3.activePeriodId, 3),
+    trx('income', 450000, 'Iuran kebersihan', fulanatiti, r3.periods[1].id, 35),
+    trx('income', 450000, 'Iuran keamanan', ful, r3.periods[1].id, 35),
+    trx('expense', 2000000, 'Renovasi dapur', fulanansi, r3.periods[1].id, 32),
+    trx('expense', 400000, 'Kebutuhan bersama', fulanati, r3.periods[1].id, 28),
+    trx('income', 400000, 'Iuran kebersihan', fulanati, r3.periods[0].id, 65),
+    trx('income', 400000, 'Iuran keamanan', ful, r3.periods[0].id, 65),
+    trx('expense', 1500000, 'Pesta keluarga', fulaa, r3.periods[0].id, 60),
+  ];
+
+  return { users, workspaces: { [r1.id]: r1, [r2.id]: r2, [r3.id]: r3 }, activeId: r2.id };
+}
+
+function enterDemo() {
+  demoMode = true;
+  const d = buildDemoData();
+  state.users = d.users;
+  state.workspaces = d.workspaces;
+  state.currentEmail = DEMO_EMAIL;
+  state.activeWorkspaceId = d.activeId;
+  if (unsubWorkspaces) unsubWorkspaces();
+  if (unsubUsers) unsubUsers();
+  unsubWorkspaces = null; unsubUsers = null;
+  if (els.demoBanner) els.demoBanner.classList.remove('hidden');
+  showStep('dashboard'); render();
+  showToast('Mode demo diaktifkan. Data tidak tersimpan.');
+}
+
+function exitDemo() {
+  demoMode = false;
+  if (els.demoBanner) els.demoBanner.classList.add('hidden');
+  Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
+  showSavings = false;
+  saveState();
+  showStep('auth');
+}
 
 function completeLogin(email, data) {
   state.currentEmail = email;
@@ -393,6 +505,9 @@ function bindEvents() {
     const email = normalizeEmail(els.emailInput.value) || '[email akunmu]';
     window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
   });
+
+  els.demoButton && els.demoButton.addEventListener('click', enterDemo);
+  els.demoExitBtn && els.demoExitBtn.addEventListener('click', exitDemo);
 
   els.setPasswordForm && els.setPasswordForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -499,6 +614,8 @@ function bindEvents() {
     if (unsubWorkspaces) unsubWorkspaces();
     if (unsubUsers) unsubUsers();
     unsubWorkspaces = null; unsubUsers = null;
+    demoMode = false;
+    if (els.demoBanner) els.demoBanner.classList.add('hidden');
     Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
     showSavings = false; saveState(); showStep('auth');
     els.emailInput.value = '';
@@ -1104,6 +1221,7 @@ function loadState() {
 }
 
 function saveState() {
+  if (demoMode) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentEmail: state.currentEmail, activeWorkspaceId: state.activeWorkspaceId }));
   if (state.currentEmail && state.users[state.currentEmail]) setDoc(doc(db, 'users', state.currentEmail), state.users[state.currentEmail]).catch(console.error);
   if (state.activeWorkspaceId && state.workspaces[state.activeWorkspaceId]) setDoc(doc(db, 'workspaces', state.activeWorkspaceId), state.workspaces[state.activeWorkspaceId]).catch(console.error);

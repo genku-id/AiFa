@@ -43,6 +43,13 @@
           <p style="text-align:center;margin-top:14px;font-size:0.8rem;">
             <a href="#" id="forgotPasswordLink" style="color:var(--primary);font-weight:700;">Lupa password?</a>
           </p>
+          <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line);text-align:center;">
+            <button class="secondary-button" id="demoButton" type="button" style="width:100%;display:inline-flex;justify-content:center;align-items:center;gap:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
+              Coba Demo Mode
+            </button>
+            <p style="font-size:0.75rem;color:var(--muted);margin:8px 0 0;">Jelajahi aplikasi dengan data contoh. Tanpa daftar, data tidak tersimpan.</p>
+          </div>
         </div>
 
         <!-- STEP 2: Setup Profil -->
@@ -480,6 +487,12 @@
     </dialog>
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="demo-banner hidden" id="demoBanner" role="note">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 9v4m0 4h.01"></path><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z"></path></svg>
+      <span>Mode Demo</span>
+      <button type="button" id="demoExitBtn">Keluar</button>
+    </div>
 
     <div class="install-banner hidden" id="installBanner">
       <div class="install-banner-content">

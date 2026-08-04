@@ -29,6 +29,16 @@
   box-sizing: border-box;
 }
 
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 html,
 body {
   min-height: 100%;

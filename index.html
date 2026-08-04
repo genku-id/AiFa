@@ -254,8 +254,9 @@
             <div id="paydayAlertContainer" class="hidden" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:50;width:90%;max-width:340px;text-align:center;background:var(--primary);color:white;padding:10px 16px;border-radius:24px;box-shadow:0 4px 16px rgba(0,0,0,0.25);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;font-size:0.9rem;font-weight:600;border:2px solid rgba(255,255,255,0.2);">
               <span>&#128176;</span><span>Waktunya gajian! Mulai catatan baru</span>
             </div>
-            <div class="feed-toolbar">
-              <div><strong id="feedTitle">Catatan periode ini</strong><span id="feedSubtitle">Ketik nominal dan keterangan di bawah.</span></div>
+            <div id="wishlistAchievedBanner" class="hidden" style="position:absolute;top:16px;left:50%;transform:translateX(-50%);z-index:51;width:90%;max-width:360px;background:var(--primary);color:white;padding:8px 10px;border-radius:24px;box-shadow:0 4px 16px rgba(0,0,0,0.25);display:flex;align-items:center;gap:8px;font-size:0.85rem;font-weight:600;border:2px solid rgba(255,255,255,0.2);overflow:hidden;">
+              <span id="wishlistAchievedText" class="marquee-text" style="flex:1;overflow:hidden;white-space:nowrap;"></span>
+              <button id="wishlistAchievedClose" type="button" title="Tutup" style="background:none;border:none;color:white;font-size:1.15rem;cursor:pointer;flex-shrink:0;line-height:1;">&times;</button>
             </div>
             <div class="chat-feed" id="chatFeed"></div>
             <form class="composer" id="transactionForm">
@@ -327,23 +328,30 @@
     </dialog>
 
     <dialog class="reset-dialog" id="roomSettingsDialog">
-      <form method="dialog" class="dialog-card" id="roomSettingsForm">
+      <div class="dialog-card">
         <h2>Pengaturan Ruang</h2>
         <label class="field-label" style="display:block;margin-top:12px;text-align:left;">Nama ruang</label>
-        <div style="display:flex;gap:8px;margin-top:4px;">
+        <form id="roomSettingsNameForm" style="display:flex;gap:8px;margin-top:4px;">
           <input id="roomSettingsNameInput" type="text" style="flex:1;" required />
           <button class="primary-button" type="submit" style="white-space:nowrap;">Simpan</button>
-        </div>
+        </form>
         <label class="field-label" style="display:block;margin-top:18px;text-align:left;">Anggota (<span id="roomSettingsMemberCount">0</span>)</label>
-        <div class="member-list" id="roomSettingsMemberList" style="max-height:180px;overflow-y:auto;margin-top:4px;"></div>
+        <div class="member-list" id="roomSettingsMemberList" style="max-height:150px;overflow-y:auto;margin-top:4px;"></div>
+        <label class="field-label" style="display:block;margin-top:18px;text-align:left;">Wishlist</label>
+        <form id="roomWishlistForm" style="display:flex;gap:6px;margin-top:4px;">
+          <input id="roomWishlistNameInput" type="text" placeholder="Nama wishlist" required style="flex:1;" />
+          <input id="roomWishlistPriceInput" type="text" inputmode="numeric" placeholder="Harga" required style="width:100px;" />
+          <button class="primary-button" type="submit" style="white-space:nowrap;">Tambah</button>
+        </form>
+        <div class="wishlist-list" id="roomWishlistList" style="max-height:140px;overflow-y:auto;margin-top:4px;"></div>
         <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:10px;">
           <button class="danger-button" id="roomSettingsResetBtn" type="button">Reset Chat Ruang</button>
           <button class="danger-button" id="roomSettingsDeleteBtn" type="button" style="background:transparent;color:var(--danger,#d9534f);border-color:var(--danger,#d9534f);">Hapus Ruang</button>
         </div>
         <div class="dialog-actions">
-          <button class="secondary-button" value="cancel" type="button" onclick="document.getElementById('roomSettingsDialog').close()">Tutup</button>
+          <button class="secondary-button" type="button" onclick="document.getElementById('roomSettingsDialog').close()">Tutup</button>
         </div>
-      </form>
+      </div>
     </dialog>
 
     <dialog class="reset-dialog" id="confirmDialog">

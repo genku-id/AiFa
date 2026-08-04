@@ -47,7 +47,6 @@ const els = {
   balanceTotal: document.querySelectorAll('.balanceTotal'), savingTotal: document.querySelectorAll('.savingTotal'),
   toggleSavingsButton: document.querySelectorAll('.toggleSavingsButton'),
   archiveButton: document.querySelector('#archiveButton'),
-  feedTitle: document.querySelector('#feedTitle'), feedSubtitle: document.querySelector('#feedSubtitle'),
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
   resetDialog: document.querySelector('#resetDialog'), confirmRefreshButton: document.querySelector('#confirmRefreshButton'),
@@ -79,12 +78,19 @@ const els = {
   newAccountCancelBtn: document.querySelector('#newAccountCancelBtn'),
   newAccountFixBtn: document.querySelector('#newAccountFixBtn'),
   roomSettingsDialog: document.querySelector('#roomSettingsDialog'),
-  roomSettingsForm: document.querySelector('#roomSettingsForm'),
+  roomSettingsNameForm: document.querySelector('#roomSettingsNameForm'),
   roomSettingsNameInput: document.querySelector('#roomSettingsNameInput'),
   roomSettingsMemberList: document.querySelector('#roomSettingsMemberList'),
   roomSettingsMemberCount: document.querySelector('#roomSettingsMemberCount'),
   roomSettingsResetBtn: document.querySelector('#roomSettingsResetBtn'),
   roomSettingsDeleteBtn: document.querySelector('#roomSettingsDeleteBtn'),
+  roomWishlistForm: document.querySelector('#roomWishlistForm'),
+  roomWishlistNameInput: document.querySelector('#roomWishlistNameInput'),
+  roomWishlistPriceInput: document.querySelector('#roomWishlistPriceInput'),
+  roomWishlistList: document.querySelector('#roomWishlistList'),
+  wishlistAchievedBanner: document.querySelector('#wishlistAchievedBanner'),
+  wishlistAchievedText: document.querySelector('#wishlistAchievedText'),
+  wishlistAchievedClose: document.querySelector('#wishlistAchievedClose'),
   confirmDialog: document.querySelector('#confirmDialog'),
   confirmDialogTitle: document.querySelector('#confirmDialogTitle'),
   confirmDialogMessage: document.querySelector('#confirmDialogMessage'),
@@ -466,7 +472,7 @@ function bindEvents() {
   // Workspace Settings
   els.workspaceSettingsButton && els.workspaceSettingsButton.addEventListener('click', openRoomSettings);
 
-  els.roomSettingsForm && els.roomSettingsForm.addEventListener('submit', (e) => {
+  els.roomSettingsNameForm && els.roomSettingsNameForm.addEventListener('submit', (e) => {
     e.preventDefault();
     const ws = getActiveWorkspace(); if (!ws) return;
     const newName = els.roomSettingsNameInput.value.trim();
@@ -474,6 +480,37 @@ function bindEvents() {
     ws.name = newName;
     saveState(); render();
     showToast('Nama ruang disimpan.');
+  });
+
+  els.roomWishlistForm && els.roomWishlistForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const ws = getActiveWorkspace(); if (!ws) return;
+    const name = els.roomWishlistNameInput.value.trim();
+    const price = parseAmount(els.roomWishlistPriceInput.value);
+    if (!name || price <= 0) return;
+    if (!ws.wishlist) ws.wishlist = [];
+    ws.wishlist.push({ id: createId('wish'), name, price, createdAt: new Date().toISOString() });
+    els.roomWishlistNameInput.value = '';
+    els.roomWishlistPriceInput.value = '';
+    saveState(); render(); renderRoomWishlist(ws); updateWishlistBanner();
+    showToast('Wishlist ditambahkan.');
+  });
+
+  els.roomWishlistList && els.roomWishlistList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.wishlist-remove'); if (!btn) return;
+    const ws = getActiveWorkspace(); if (!ws) return;
+    ws.wishlist = (ws.wishlist || []).filter(w => w.id !== btn.dataset.id);
+    saveState(); render(); renderRoomWishlist(ws); updateWishlistBanner();
+  });
+
+  els.wishlistAchievedClose && els.wishlistAchievedClose.addEventListener('click', () => {
+    const ws = getActiveWorkspace(); if (!ws) return;
+    const achieved = getAchievedWishlist(ws);
+    const dismiss = readWishlistDismissals();
+    const today = new Date().toISOString().slice(0, 10);
+    achieved.forEach(w => { dismiss[w.id] = today; });
+    localStorage.setItem(WISHLIST_DISMISS_KEY, JSON.stringify(dismiss));
+    els.wishlistAchievedBanner.classList.add('hidden');
   });
 
   els.roomSettingsResetBtn && els.roomSettingsResetBtn.addEventListener('click', () => {
@@ -596,6 +633,7 @@ function openRoomSettings() {
   const ws = getActiveWorkspace(); if (!ws) return;
   els.roomSettingsNameInput.value = ws.name;
   renderRoomSettingsMembers(ws);
+  renderRoomWishlist(ws);
   if (typeof els.roomSettingsDialog.showModal === 'function') els.roomSettingsDialog.showModal();
 }
 
@@ -613,6 +651,55 @@ function renderRoomSettingsMembers(ws) {
     item.innerHTML = av + '<span>' + escapeHtml(user?.name || email) + roleHtml + '<br><small>' + escapeHtml(email) + '</small></span>';
     els.roomSettingsMemberList.append(item);
   });
+}
+
+function renderRoomWishlist(ws) {
+  if (!els.roomWishlistList) return;
+  els.roomWishlistList.innerHTML = '';
+  const items = ws.wishlist || [];
+  if (!items.length) {
+    const e = document.createElement('div');
+    e.style.cssText = 'padding:8px;font-size:0.8rem;color:var(--muted);';
+    e.textContent = 'Belum ada wishlist.';
+    els.roomWishlistList.append(e);
+    return;
+  }
+  items.forEach(w => {
+    const item = document.createElement('div');
+    item.className = 'wishlist-item';
+    item.innerHTML = '<span>' + escapeHtml(w.name) + '</span><span class="wishlist-price">' + formatCurrency(w.price) + '</span><button class="wishlist-remove" data-id="' + escapeHtml(w.id) + '" type="button" title="Hapus">&times;</button>';
+    els.roomWishlistList.append(item);
+  });
+}
+
+const WISHLIST_DISMISS_KEY = 'aifa.wishlist.dismissed';
+
+function getAchievedWishlist(ws) {
+  if (!ws || !Array.isArray(ws.wishlist) || !state.currentEmail) return [];
+  const tot = calculateTotals(ws);
+  return ws.wishlist.filter(w => w.price > 0 && tot.saving >= w.price);
+}
+
+function readWishlistDismissals() {
+  try { return JSON.parse(localStorage.getItem(WISHLIST_DISMISS_KEY) || '{}'); } catch { return {}; }
+}
+
+function updateWishlistBanner() {
+  if (!els.wishlistAchievedBanner || !state.currentEmail) return;
+  const ws = getActiveWorkspace();
+  const achieved = getAchievedWishlist(ws);
+  const today = new Date().toISOString().slice(0, 10);
+  const dismiss = readWishlistDismissals();
+  let shown = null;
+  for (const item of achieved) {
+    if (dismiss[item.id] !== today) { shown = item; break; }
+  }
+  if (!shown) {
+    els.wishlistAchievedBanner.classList.add('hidden');
+    return;
+  }
+  els.wishlistAchievedText.textContent = 'Selamat, tabungan anda mencapai wishlist ' + shown.name + '!';
+  els.wishlistAchievedBanner.classList.remove('hidden');
 }
 
 function deleteWorkspace(id) {
@@ -645,8 +732,8 @@ function openConfirm(title, message, okLabel, callback) {
 function renderHeader() {
   const ws = getActiveWorkspace(); if (!ws) return;
   const p = getActivePeriod(ws);
-  els.workspaceTitle.textContent = ws.name;
-  if (els.feedTitle) els.feedTitle.textContent = ws.name;
+  const title = 'Ruang ' + ws.name;
+  document.querySelectorAll('#workspaceTitle').forEach(el => el.textContent = title);
   els.periodLabel.textContent = p ? 'Periode aktif sejak ' + formatDate(p.startedAt) : 'Periode aktif';
 }
 
@@ -679,6 +766,7 @@ function checkPaydayAlert(ws) {
 function renderFeed() {
   const ws = getActiveWorkspace(); if (!ws) return;
   checkPaydayAlert(ws);
+  updateWishlistBanner();
   const txs = ws.transactions.filter(t => t.type !== 'saving' && t.periodId === ws.activePeriodId).sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
   els.chatFeed.innerHTML = '';
   if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan.'; els.chatFeed.append(e); return; }

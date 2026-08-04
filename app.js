@@ -1162,9 +1162,9 @@ function renderHeader() {
 function renderTotals() {
   const ws = getActiveWorkspace(); if (!ws) return;
   const t = calculateTotals(ws);
-  els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense));
+  els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
   els.expenseTotal.forEach(el => el.textContent = formatSummaryCurrency(t.expense));
-  els.balanceTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense));
+  els.balanceTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
   els.savingTotal.forEach(el => el.textContent = showSavings ? formatSummaryCurrency(t.saving) : '***');
 }
 
@@ -1189,7 +1189,7 @@ function renderFeed() {
   const ws = getActiveWorkspace(); if (!ws) return;
   checkPaydayAlert(ws);
   updateWishlistBanner();
-  const txs = ws.transactions.filter(t => t.type !== 'saving' && t.periodId === ws.activePeriodId).map(t => ({ kind: 'finance', data: t }));
+  const txs = ws.transactions.filter(t => t.type === 'saving' ? t.privateOwnerEmail === state.currentEmail : t.periodId === ws.activePeriodId).map(t => ({ kind: 'finance', data: t }));
   const chats = (ws.chat || []).map(c => ({ kind: 'chat', data: c }));
   const items = txs.concat(chats).sort((a, b) => new Date(a.data.createdAt) - new Date(b.data.createdAt));
   els.chatFeed.innerHTML = '';

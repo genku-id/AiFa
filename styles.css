@@ -562,7 +562,9 @@ select:focus {
   position: fixed;
   inset: 0;
   z-index: 2000;
-  background: var(--bg);
+  background: rgba(255, 253, 247, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   display: flex;
   flex-direction: column;
   align-items: center;

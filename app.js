@@ -39,7 +39,7 @@ const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
   stepAuth: document.querySelector('#stepAuth'), stepProfile: document.querySelector('#stepProfile'), stepWorkspace: document.querySelector('#stepWorkspace'),
   loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'), passwordInput: document.querySelector('#passwordInput'), loginError: document.querySelector('#loginError'), forgotPasswordLink: document.querySelector('#forgotPasswordLink'),
-  demoButton: document.querySelector('#demoButton'), demoBanner: document.querySelector('#demoBanner'), demoExitBtn: document.querySelector('#demoExitBtn'),
+  demoButton: document.querySelector('#demoButton'), demoBanner: document.querySelector('#demoBanner'), demoExitBtn: document.querySelector('#demoExitBtn'), splashView: document.querySelector('#splashView'),
   onboardProfileForm: document.querySelector('#onboardProfileForm'), onboardAvatarPreview: document.querySelector('#onboardAvatarPreview'),
   onboardAvatarInput: document.querySelector('#onboardAvatarInput'), onboardNameInput: document.querySelector('#onboardNameInput'),
   onboardRoleInput: document.querySelector('#onboardRoleInput'), onboardWaInput: document.querySelector('#onboardWaInput'),
@@ -162,10 +162,12 @@ function boot() {
   startReminderScheduler();
   window.addEventListener('popstate', handlePopState);
   if (state.currentEmail) {
+    if (els.splashView) { els.splashView.classList.remove('hidden'); els.authView.classList.add('hidden'); }
     getDoc(doc(db, 'users', state.currentEmail)).then(snap => {
       if (snap.exists()) {
         state.users[state.currentEmail] = snap.data();
         subscribeToData(); render(); showStep('dashboard');
+        if (els.splashView) els.splashView.classList.add('hidden');
         refreshReminderConfig();
         const p = new URLSearchParams(window.location.search);
         if (p.get('inviteId') && p.get('inviteName')) {
@@ -174,11 +176,13 @@ function boot() {
       } else {
         state.currentEmail = null;
         saveState();
+        if (els.splashView) els.splashView.classList.add('hidden');
         showStep('auth');
       }
     }).catch((err) => {
       console.error('boot getUser error:', err);
       showToast('Gagal terhubung ke server. Cek koneksi & izin Firestore.');
+      if (els.splashView) els.splashView.classList.add('hidden');
       showStep('auth');
     });
   } else { showStep('auth'); }

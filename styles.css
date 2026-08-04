@@ -1449,6 +1449,29 @@ svg {
 .expense-text strong { color: var(--expense); font-size: 0.9rem; }
 .balance-text strong { color: var(--balance); font-size: 0.9rem; }
 .saving-text strong { color: var(--saving); font-size: 0.9rem; }
+.saving-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.eye-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--saving);
+  cursor: pointer;
+  border-radius: 50%;
+}
+.eye-toggle-btn:hover { background: rgba(0,0,0,0.08); }
+.eye-toggle-btn svg { width: 14px; height: 14px; }
+.eye-toggle-btn .eye-closed { display: none; }
+.eye-toggle-btn.revealed .eye-open { display: none; }
+.eye-toggle-btn.revealed .eye-closed { display: block; }
 
 .compact-icon-btn {
   padding: 0;

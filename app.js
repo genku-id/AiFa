@@ -23,7 +23,7 @@ const EMAIL_TYPOS = {
   'yahho.com': 'yahoo.com',
 };
 const state = loadState();
-let selectedType = 'expense', deferredPrompt;
+let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
 let pendingSetPasswordEmail = null;
 let demoMode = false;
@@ -59,6 +59,7 @@ const els = {
   workspaceTitle: document.querySelector('#workspaceTitle'), periodLabel: document.querySelector('#periodLabel'),
   incomeTotal: document.querySelectorAll('.incomeTotal'), expenseTotal: document.querySelectorAll('.expenseTotal'),
   balanceTotal: document.querySelectorAll('.balanceTotal'), savingTotal: document.querySelectorAll('.savingTotal'),
+  toggleSavingsButton: document.querySelectorAll('.toggleSavingsButton'),
   archiveButton: document.querySelector('#archiveButton'),
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
@@ -476,6 +477,7 @@ function exitDemo() {
   demoMode = false;
   if (els.demoBanner) els.demoBanner.classList.add('hidden');
   Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
+  showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
   saveState();
   showStep('auth');
 }
@@ -676,6 +678,7 @@ function bindEvents() {
     demoMode = false;
     if (els.demoBanner) els.demoBanner.classList.add('hidden');
     Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
+    showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
     saveState(); showStep('auth');
     els.emailInput.value = '';
     if (els.passwordInput) { els.passwordInput.value = ''; if (els.loginError) els.loginError.style.display = 'none'; }
@@ -737,6 +740,12 @@ function bindEvents() {
   renderComposerMode();
 
   els.transactionAmountInput.addEventListener('input', () => { const a = parseAmount(els.transactionAmountInput.value); els.transactionAmountInput.value = a > 0 ? formatPlainNumber(a) : ''; });
+  els.toggleSavingsButton.forEach(b => b.addEventListener('click', () => {
+    showSavings = !showSavings;
+    els.toggleSavingsButton.forEach(btn => btn.classList.toggle('revealed', showSavings));
+    renderTotals();
+    if (els.archiveView && !els.archiveView.classList.contains('hidden')) renderArchive();
+  }));
   els.archiveButton.addEventListener('click', () => { els.archiveView.classList.remove('hidden'); renderArchive(); history.pushState({ page: 'archive' }, ''); });
   els.closeArchiveButton && els.closeArchiveButton.addEventListener('click', () => els.archiveView.classList.add('hidden'));
   els.paydayAlertContainer && els.paydayAlertContainer.addEventListener('click', () => { const ws = getActiveWorkspace(); if (!ws) return; if (typeof els.resetDialog.showModal === 'function') { els.resetDialog.showModal(); return; } refreshWorkspace(ws); });
@@ -1162,7 +1171,7 @@ function renderTotals() {
   els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
   els.expenseTotal.forEach(el => el.textContent = formatSummaryCurrency(t.expense));
   els.balanceTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
-  els.savingTotal.forEach(el => el.textContent = formatSummaryCurrency(t.saving));
+  els.savingTotal.forEach(el => el.textContent = showSavings ? formatSummaryCurrency(t.saving) : '***');
 }
 
 function renderTypeSwitch() {
@@ -1256,7 +1265,7 @@ function renderArchive() {
     + '<div class="archive-recap-grid">'
     + '<div class="archive-recap-item income-text"><span>Pemasukan</span><strong>' + formatCurrency(tot.income) + '</strong></div>'
     + '<div class="archive-recap-item expense-text"><span>Pengeluaran</span><strong>' + formatCurrency(tot.expense) + '</strong></div>'
-    + '<div class="archive-recap-item saving-text"><span>Tabungan</span><strong>' + formatCurrency(tot.saving) + '</strong></div>'
+    + '<div class="archive-recap-item saving-text"><span>Tabungan</span><strong>' + (showSavings ? formatCurrency(tot.saving) : '***') + '</strong></div>'
     + '</div>';
   els.archiveFeed.append(recap);
   if (!txs.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan dari periode sebelumnya.'; els.archiveFeed.append(e); els.archiveFeed.scrollTop = els.archiveFeed.scrollHeight; return; }

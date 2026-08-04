@@ -185,7 +185,10 @@ function boot() {
       if (els.splashView) els.splashView.classList.add('hidden');
       showStep('auth');
     });
-  } else { showStep('auth'); }
+  } else {
+    if (els.splashView) els.splashView.classList.add('hidden');
+    showStep('auth');
+  }
 }
 
 function showStep(step, pushHistory = true) {

@@ -70,7 +70,7 @@ const els = {
   setPasswordDialog: document.querySelector('#setPasswordDialog'), setPasswordForm: document.querySelector('#setPasswordForm'),
   setPasswordEmail: document.querySelector('#setPasswordEmail'), setPasswordNewInput: document.querySelector('#setPasswordNewInput'),
   setPasswordConfirmInput: document.querySelector('#setPasswordConfirmInput'), setPasswordError: document.querySelector('#setPasswordError'),
-  setPasswordCancelBtn: document.querySelector('#setPasswordCancelBtn'),
+  setPasswordCancelBtn: document.querySelector('#setPasswordCancelBtn'), setPasswordSaveBtn: document.querySelector('#setPasswordSaveBtn'),
   archiveView: document.querySelector('#archiveView'), archiveFeed: document.querySelector('#archiveFeed'),
   closeArchiveButton: document.querySelector('#closeArchiveButton'), installBanner: document.querySelector('#installBanner'),
   installButton: document.querySelector('#installButton'), closeInstallBanner: document.querySelector('#closeInstallBanner'),

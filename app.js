@@ -35,6 +35,7 @@ let editingTrxId = null;
 let editingChatId = null;
 let contextKind = 'finance';
 let composerMode = localStorage.getItem('aifa.composer.mode') === 'chat' ? 'chat' : 'finance';
+let modeMenuOpenedAt = 0;
 let editType = 'expense';
 let trxMenuOpenedAt = 0;
 let unsubWorkspaces = null, unsubUsers = null;
@@ -62,7 +63,8 @@ const els = {
   archiveButton: document.querySelector('#archiveButton'),
   chatFeed: document.querySelector('#chatFeed'), transactionForm: document.querySelector('#transactionForm'),
   transactionNoteInput: document.querySelector('#transactionNoteInput'), transactionAmountInput: document.querySelector('#transactionAmountInput'),
-  composerModeBtns: [...document.querySelectorAll('.composer-mode-btn')], composerFinanceBox: document.querySelector('#composerFinanceBox'), composerChatBox: document.querySelector('#composerChatBox'), chatInput: document.querySelector('#chatInput'),
+  modeDotsBtn: document.querySelector('#modeDotsBtn'), modeMenu: document.querySelector('#modeMenu'), modeMenuItems: [...document.querySelectorAll('.mode-menu-item')],
+  composerFinanceBox: document.querySelector('#composerFinanceBox'), composerChatBox: document.querySelector('#composerChatBox'), chatInput: document.querySelector('#chatInput'),
   editChatDialog: document.querySelector('#editChatDialog'), editChatForm: document.querySelector('#editChatForm'), editChatInput: document.querySelector('#editChatInput'),
   resetDialog: document.querySelector('#resetDialog'), confirmRefreshButton: document.querySelector('#confirmRefreshButton'),
   toast: document.querySelector('#toast'), switchOptions: [...document.querySelectorAll('.switch-option')],
@@ -717,11 +719,16 @@ function bindEvents() {
     saveState(); render(); showToast(selectedType === 'saving' ? 'Tabungan privat tercatat.' : TYPE_LABELS[selectedType] + ' tercatat.'); scrollFeedToBottom();
   });
 
-  els.composerModeBtns.forEach(b => b.addEventListener('click', () => {
+  els.modeDotsBtn && els.modeDotsBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    toggleModeMenu();
+  });
+  els.modeMenuItems && els.modeMenuItems.forEach(b => b.addEventListener('click', () => {
     composerMode = b.dataset.mode;
     localStorage.setItem('aifa.composer.mode', composerMode);
+    closeModeMenu();
     renderComposerMode();
-    if (composerMode === 'chat') els.chatInput.focus();
+    if (composerMode === 'chat') els.chatInput && els.chatInput.focus();
   }));
   renderComposerMode();
 
@@ -908,6 +915,11 @@ function bindEvents() {
   document.addEventListener('click', (e) => {
     if (els.trxMenu && !els.trxMenu.contains(e.target)) {
       if (Date.now() - trxMenuOpenedAt > 350) closeTrxMenu();
+    }
+  });
+  document.addEventListener('click', (e) => {
+    if (els.modeMenu && els.modeDotsBtn && !els.modeMenu.contains(e.target) && !els.modeDotsBtn.contains(e.target)) {
+      if (Date.now() - modeMenuOpenedAt > 350) closeModeMenu();
     }
   });
   els.editTypeOptions.forEach(b => b.addEventListener('click', () => { editType = b.dataset.type; renderEditTypeSwitch(); }));
@@ -1189,7 +1201,37 @@ function renderComposerMode() {
     els.composerChatBox.classList.add('hidden');
     els.composerFinanceBox.classList.remove('hidden');
   }
-  els.composerModeBtns.forEach(b => b.classList.toggle('active', b.dataset.mode === composerMode));
+  renderModeMenuCheck();
+}
+
+function toggleModeMenu() {
+  if (els.modeMenu.classList.contains('hidden')) openModeMenu();
+  else closeModeMenu();
+}
+
+function openModeMenu() {
+  const btn = els.modeDotsBtn, menu = els.modeMenu;
+  if (!btn || !menu) return;
+  renderModeMenuCheck();
+  menu.classList.remove('hidden');
+  menu.style.left = '0px';
+  menu.style.top = '0px';
+  const r = btn.getBoundingClientRect();
+  const mw = menu.offsetWidth || 132, mh = menu.offsetHeight || 88;
+  let x = Math.max(8, Math.min(r.left, window.innerWidth - mw - 8));
+  let y = r.top - mh - 6;
+  if (y < 8) y = r.bottom + 6;
+  menu.style.left = x + 'px';
+  menu.style.top = y + 'px';
+  modeMenuOpenedAt = Date.now();
+}
+
+function closeModeMenu() {
+  if (els.modeMenu) els.modeMenu.classList.add('hidden');
+}
+
+function renderModeMenuCheck() {
+  els.modeMenuItems.forEach(b => b.classList.toggle('active', b.dataset.mode === composerMode));
 }
 
 function renderArchive() {

@@ -790,30 +790,39 @@ select:focus {
   padding: 0;
 }
 
-.composer-mode-bar {
+.type-row {
   display: flex;
+  align-items: stretch;
   gap: 6px;
   margin-bottom: 8px;
 }
-.composer-mode-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 30px;
-  padding: 5px 12px;
+.mode-dots-btn {
+  min-width: 34px;
+  width: 34px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 8px;
   background: #f3f6ef;
   color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
+  padding: 0;
 }
-.composer-mode-btn.active {
-  border-color: var(--primary);
-  background: var(--primary);
-  color: #fffdf7;
+.mode-dots-btn:hover { background: var(--primary-soft); }
+.type-row .type-switch {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
 }
+.mode-menu-item.active { background: var(--primary-soft); }
+.mode-menu-check {
+  margin-left: auto;
+  color: var(--primary);
+  font-weight: 800;
+  display: none;
+}
+.mode-menu-item.active .mode-menu-check { display: inline; }
 #composerChatBox .composer-row {
   grid-template-columns: minmax(0, 1fr) 44px;
 }

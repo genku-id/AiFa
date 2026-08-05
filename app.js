@@ -1,11 +1,11 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
-import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, orderBy, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const firebaseConfig = { apiKey: 'AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw', authDomain: 'gen-lang-client-0513521672.firebaseapp.com', projectId: 'gen-lang-client-0513521672', storageBucket: 'gen-lang-client-0513521672.firebasestorage.app', messagingSenderId: '358176864493', appId: '1:358176864493:web:24591e445aa4fe8612f4e4' };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const STORAGE_KEY = 'aifa.finance.v2';
-const DEFAULT_DATA = { users: {}, workspaces: {}, currentEmail: null, activeWorkspaceId: null };
+const DEFAULT_DATA = { users: {}, workspaces: {}, messages: {}, currentEmail: null, activeWorkspaceId: null };
 const TYPE_LABELS = { income: 'Pendapatan', expense: 'Pengeluaran', saving: 'Tabungan' };
 const MAX_ROOMS = 5;
 const EMAIL_TYPOS = {
@@ -40,6 +40,8 @@ let modeMenuOpenedAt = 0;
 let editType = 'expense';
 let trxMenuOpenedAt = 0;
 let unsubWorkspaces = null, unsubUsers = null;
+let messageSubs = {};
+let migratedWs = new Set();
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
   stepAuth: document.querySelector('#stepAuth'), stepProfile: document.querySelector('#stepProfile'), stepWorkspace: document.querySelector('#stepWorkspace'),
@@ -282,12 +284,16 @@ function subscribeToData() {
   if (!state.currentEmail) return;
   if (unsubWorkspaces) unsubWorkspaces();
   if (unsubUsers) unsubUsers();
+  Object.values(messageSubs).forEach(u => u());
+  messageSubs = {};
+  state.messages = {};
   const wq = query(collection(db, 'workspaces'), where('members', 'array-contains', state.currentEmail));
   unsubWorkspaces = onSnapshot(wq, (snap) => {
     snap.docChanges().forEach((ch) => {
-      if (ch.type === 'added' || ch.type === 'modified') { state.workspaces[ch.doc.id] = ch.doc.data(); pruneChat(state.workspaces[ch.doc.id]); }
+      if (ch.type === 'added' || ch.type === 'modified') { state.workspaces[ch.doc.id] = ch.doc.data(); migrateLegacyChat(state.workspaces[ch.doc.id]); }
       if (ch.type === 'removed') delete state.workspaces[ch.doc.id];
     });
+    resubscribeMessages();
     render();
   }, (err) => {
     console.error('Gagal memuat ruang:', err);
@@ -323,7 +329,7 @@ async function joinWorkspaceFromInvite(inviteId, inviteName) {
     } else {
       // Workspace not in Firestore yet (edge case) — create a minimal placeholder
       const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
-      const wsData = { id: inviteId, name: inviteName, ownerEmail: 'unknown', members: [state.currentEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], chat: [], createdAt: new Date().toISOString() };
+      const wsData = { id: inviteId, name: inviteName, ownerEmail: 'unknown', members: [state.currentEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
       await setDoc(wsRef, wsData);
       state.workspaces[inviteId] = wsData;
     }
@@ -468,7 +474,9 @@ function enterDemo() {
   state.activeWorkspaceId = d.activeId;
   if (unsubWorkspaces) unsubWorkspaces();
   if (unsubUsers) unsubUsers();
-  unsubWorkspaces = null; unsubUsers = null;
+  Object.values(messageSubs).forEach(u => u());
+  unsubWorkspaces = null; unsubUsers = null; messageSubs = {};
+  state.messages = {};
   if (els.demoBanner) els.demoBanner.classList.remove('hidden');
   showStep('dashboard'); render();
   showToast('Mode demo diaktifkan. Data tidak tersimpan.');
@@ -477,7 +485,7 @@ function enterDemo() {
 function exitDemo() {
   demoMode = false;
   if (els.demoBanner) els.demoBanner.classList.add('hidden');
-  Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
+  Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
   showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
   periodRecoveryPrompted = false;
   saveState();
@@ -674,12 +682,13 @@ function bindEvents() {
   });
 
   els.logoutButton.addEventListener('click', () => {
-    if (unsubWorkspaces) unsubWorkspaces();
-    if (unsubUsers) unsubUsers();
-    unsubWorkspaces = null; unsubUsers = null;
-    demoMode = false;
-    if (els.demoBanner) els.demoBanner.classList.add('hidden');
-    Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {} });
+  if (unsubWorkspaces) unsubWorkspaces();
+  if (unsubUsers) unsubUsers();
+  Object.values(messageSubs).forEach(u => u());
+  unsubWorkspaces = null; unsubUsers = null; messageSubs = {};
+  demoMode = false;
+  if (els.demoBanner) els.demoBanner.classList.add('hidden');
+  Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
     showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
     periodRecoveryPrompted = false;
     saveState(); showStep('auth');
@@ -708,10 +717,14 @@ function bindEvents() {
     if (composerMode === 'chat') {
       const text = els.chatInput.value.trim();
       if (!text) return;
-      ws.chat = ws.chat || [];
-      ws.chat.push({ id: createId('chat'), text, actorEmail: state.currentEmail, createdAt: new Date().toISOString() });
+      const msg = { id: createId('chat'), text, actorEmail: state.currentEmail, createdAt: new Date().toISOString() };
+      getChats(ws).push(msg);
       els.chatInput.value = '';
-      saveState(); render(); scrollFeedToBottom();
+      if (!demoMode) setDoc(doc(db, 'workspaces', ws.id, 'messages', msg.id), msg).catch((err) => {
+        console.error('sendChat error:', err);
+        showToast('Gagal mengirim pesan: ' + (err.code || err.message));
+      });
+      render(); scrollFeedToBottom();
       return;
     }
     const tier = (state.users[state.currentEmail] || {}).tier || 'free';
@@ -876,7 +889,9 @@ function bindEvents() {
     const ws = getActiveWorkspace(); if (!ws) return;
     openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pesan chat, pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan tetap aman.', 'Ya, reset', () => {
       ws.transactions = [];
-      ws.chat = [];
+      const chats = getChats(ws);
+      if (!demoMode) chats.slice().forEach(c => deleteDoc(doc(db, 'workspaces', ws.id, 'messages', c.id)).catch(console.error));
+      chats.length = 0;
       saveState(); render();
       showToast('Chat ruang telah di-reset.');
     });
@@ -915,8 +930,11 @@ function bindEvents() {
     if (kind === 'chat') {
       openConfirm('Hapus pesan ini?', 'Pesan akan dihapus.', 'Hapus', () => {
         const ws = getActiveWorkspace(); if (!ws) return;
-        ws.chat = (ws.chat || []).filter(x => x.id !== t.id);
-        saveState(); render();
+        const chats = getChats(ws);
+        const idx = chats.findIndex(x => x.id === t.id);
+        if (idx >= 0) chats.splice(idx, 1);
+        if (!demoMode) deleteDoc(doc(db, 'workspaces', ws.id, 'messages', t.id)).catch(console.error);
+        render();
         showToast('Pesan dihapus.');
       });
     } else {
@@ -960,7 +978,8 @@ function bindEvents() {
     const text = els.editChatInput.value.trim();
     if (!text) return;
     c.text = text;
-    saveState(); render(); els.editChatDialog.close();
+    if (!demoMode) updateDoc(doc(db, 'workspaces', ws.id, 'messages', c.id), { text }).catch(console.error);
+    render(); els.editChatDialog.close();
     showToast('Pesan diperbarui.');
   });
   els.editChatDialog && els.editChatDialog.addEventListener('close', () => { editingChatId = null; });
@@ -1167,6 +1186,8 @@ function updateWishlistBanner() {
 
 function deleteWorkspace(id) {
   const ws = state.workspaces[id];
+  const msgs = (state.messages && state.messages[id]) || [];
+  if (!demoMode) msgs.forEach(m => deleteDoc(doc(db, 'workspaces', id, 'messages', m.id)).catch(console.error));
   deleteDoc(doc(db, 'workspaces', id)).catch(err => {
     console.error('deleteWorkspace error:', err);
     if (ws) state.workspaces[id] = ws;
@@ -1235,7 +1256,7 @@ function renderFeed() {
   checkPaydayAlert(ws);
   updateWishlistBanner();
   const txs = ws.transactions.filter(t => t.type === 'saving' || t.periodId === ws.activePeriodId).map(t => ({ kind: 'finance', data: t }));
-  const chats = (ws.chat || []).map(c => ({ kind: 'chat', data: c }));
+  const chats = getChats(ws).map(c => ({ kind: 'chat', data: c }));
   const items = txs.concat(chats).sort((a, b) => new Date(a.data.createdAt) - new Date(b.data.createdAt));
   els.chatFeed.innerHTML = '';
   if (!items.length) { const e = document.createElement('div'); e.className = 'empty-state'; e.textContent = 'Belum ada catatan atau pesan.'; els.chatFeed.append(e); return; }
@@ -1413,7 +1434,7 @@ function openChatMenu(id, x, y) {
 
 function findChatById(id) {
   const ws = getActiveWorkspace(); if (!ws) return null;
-  return (ws.chat || []).find(x => x.id === id) || null;
+  return getChats(ws).find(x => x.id === id) || null;
 }
 
 function openEditChat(c) {
@@ -1424,12 +1445,54 @@ function openEditChat(c) {
 }
 
 function pruneChat(ws) {
-  const chat = ws.chat || [];
+  const msgs = state.messages && state.messages[ws.id];
+  if (!msgs || !msgs.length) return;
   const cutoff = Date.now() - 30 * 86400000;
-  const kept = chat.filter(c => new Date(c.createdAt).getTime() >= cutoff);
-  if (kept.length !== chat.length) {
-    ws.chat = kept;
-    setDoc(doc(db, 'workspaces', ws.id), ws).catch(console.error);
+  const old = msgs.filter(c => new Date(c.createdAt).getTime() < cutoff);
+  if (old.length) {
+    state.messages[ws.id] = msgs.filter(c => new Date(c.createdAt).getTime() >= cutoff);
+    if (!demoMode) old.forEach(c => deleteDoc(doc(db, 'workspaces', ws.id, 'messages', c.id)).catch(console.error));
+  }
+}
+
+function getChats(ws) {
+  if (!ws) return [];
+  if (!state.messages[ws.id]) state.messages[ws.id] = ws.chat || [];
+  return state.messages[ws.id];
+}
+
+function resubscribeMessages() {
+  if (demoMode || !state.currentEmail) return;
+  const joined = getUserWorkspaces();
+  const ids = new Set(joined.map(w => w.id));
+  for (const id of Object.keys(messageSubs)) {
+    if (!ids.has(id)) { messageSubs[id](); delete messageSubs[id]; delete state.messages[id]; }
+  }
+  joined.forEach(w => {
+    if (messageSubs[w.id]) return;
+    const q = query(collection(db, 'workspaces', w.id, 'messages'), orderBy('createdAt', 'asc'));
+    messageSubs[w.id] = onSnapshot(q, (snap) => {
+      state.messages[w.id] = snap.docs.map(d => d.data());
+      pruneChat(w);
+      render();
+    }, (err) => { console.error('Gagal memuat pesan:', err); });
+  });
+}
+
+async function migrateLegacyChat(ws) {
+  if (demoMode || !ws || migratedWs.has(ws.id)) return;
+  const legacy = ws.chat;
+  if (!Array.isArray(legacy) || !legacy.length) return;
+  migratedWs.add(ws.id);
+  try {
+    await Promise.all(legacy.map(c => setDoc(doc(db, 'workspaces', ws.id, 'messages', c.id), c).catch(console.error)));
+    await updateDoc(doc(db, 'workspaces', ws.id), { chat: deleteField() });
+    ws.chat = [];
+    if (state.messages[ws.id]) state.messages[ws.id].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+    render();
+  } catch (err) {
+    console.error('migrateLegacyChat error:', err);
+    migratedWs.delete(ws.id);
   }
 }
 
@@ -1480,7 +1543,7 @@ function createWorkspace(name, ownerEmail) {
     return null;
   }
   const fp = { id: createId('period'), label: 'Periode 1', startedAt: new Date().toISOString(), endedAt: null };
-  const ws = { id: createId('room'), name, ownerEmail, members: [ownerEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], chat: [], createdAt: new Date().toISOString() };
+  const ws = { id: createId('room'), name, ownerEmail, members: [ownerEmail], invites: [], activePeriodId: fp.id, periods: [fp], transactions: [], createdAt: new Date().toISOString() };
   state.workspaces[ws.id] = ws;
   setDoc(doc(db, 'workspaces', ws.id), ws).catch((err) => {
     console.error('createWorkspace error:', err);
@@ -1507,7 +1570,11 @@ function saveState() {
   if (demoMode) return;
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ currentEmail: state.currentEmail, activeWorkspaceId: state.activeWorkspaceId }));
   if (state.currentEmail && state.users[state.currentEmail]) setDoc(doc(db, 'users', state.currentEmail), state.users[state.currentEmail]).catch(console.error);
-  if (state.activeWorkspaceId && state.workspaces[state.activeWorkspaceId]) setDoc(doc(db, 'workspaces', state.activeWorkspaceId), state.workspaces[state.activeWorkspaceId]).catch(console.error);
+  if (state.activeWorkspaceId && state.workspaces[state.activeWorkspaceId]) {
+    const wsData = { ...state.workspaces[state.activeWorkspaceId] };
+    delete wsData.chat;
+    setDoc(doc(db, 'workspaces', state.activeWorkspaceId), wsData).catch(console.error);
+  }
 }
 
 function setupInstallBanner() {

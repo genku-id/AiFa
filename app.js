@@ -699,16 +699,26 @@ function bindEvents() {
       if (methods && methods.length > 0) {
         await sendPasswordResetEmail(auth, email);
         showToast('Link reset password terkirim ke email kamu.');
-      } else {
-        window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
+        return;
       }
+      const snap = await getDoc(doc(db, 'users', email));
+      if (snap.exists()) {
+        const tempPw = 'temp-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+        try {
+          await createUserWithEmailAndPassword(auth, email, tempPw);
+        } catch (cErr) {
+          if (cErr.code !== 'auth/email-already-in-use') throw cErr;
+        }
+        await sendPasswordResetEmail(auth, email);
+        try { await updateDoc(doc(db, 'users', email), { migratedToFb: true }); } catch (ue) { console.error('markMigrated error:', ue); }
+        try { if (auth.currentUser) await authSignOut(auth); } catch (se) {}
+        showToast('Link reset password terkirim ke email kamu.');
+        return;
+      }
+      showToast('Email tidak terdaftar di AiFa. Periksa kembali penulisannya.');
     } catch (err) {
-      if (err.code === 'auth/invalid-email') {
-        window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
-      } else {
-        console.error('forgotPassword error:', err);
-        showToast('Gagal mengirim. Coba lagi atau hubungi admin.');
-      }
+      if (err.code === 'auth/too-many-requests') showToast('Terlalu sering. Tunggu sebentar lalu coba lagi.');
+      else { console.error('forgotPassword error:', err); showToast('Gagal mengirim link. Coba lagi nanti.'); }
     } finally { link.textContent = 'Lupa password?'; }
   });
 

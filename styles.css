@@ -558,6 +558,44 @@ select:focus {
   cursor: pointer;
 }
 
+.verify-banner {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 950;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #fff7e0;
+  color: #7a5a00;
+  border: 1px solid #f3d98b;
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.8rem;
+  max-width: min(560px, calc(100vw - 24px));
+  box-shadow: var(--shadow);
+  box-sizing: border-box;
+}
+.verify-banner span { flex: 1; }
+.verify-banner button {
+  background: #b8860b;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.verify-banner button#closeVerifyBanner {
+  background: transparent;
+  color: #7a5a00;
+  padding: 2px 6px;
+  font-size: 1rem;
+}
+
 .splash-view {
   position: fixed;
   inset: 0;

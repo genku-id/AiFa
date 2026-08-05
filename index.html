@@ -44,6 +44,10 @@
           <p style="text-align:center;margin-top:14px;font-size:0.8rem;">
             <a href="#" id="forgotPasswordLink" style="color:var(--primary);font-weight:700;">Lupa password?</a>
           </p>
+          <div style="margin-top:10px;text-align:center;font-size:0.8rem;">
+            <span style="color:var(--muted);">Belum punya akun? </span>
+            <a href="#" id="signupButton" style="color:var(--primary);font-weight:700;">Daftar</a>
+          </div>
           <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--line);text-align:center;">
             <button class="secondary-button" id="demoButton" type="button" style="width:100%;display:inline-flex;justify-content:center;align-items:center;gap:8px;">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>
@@ -446,8 +450,14 @@
 
     <dialog class="reset-dialog" id="newAccountDialog">
       <form method="dialog" class="dialog-card">
-        <h2>Akun tidak ditemukan</h2>
-        <p>Belum ada akun dengan email <strong id="newAccountEmail" style="color:var(--ink);"></strong>.</p>
+        <h2 id="newAccountTitle">Buat Akun Baru</h2>
+        <div id="newAccountNotFound">
+          <p>Belum ada akun dengan email <strong id="newAccountEmail" style="color:var(--ink);"></strong>.</p>
+        </div>
+        <div id="newAccountEmailField" class="hidden">
+          <label for="newAccountEmailInput">Email kamu</label>
+          <input id="newAccountEmailInput" type="email" autocomplete="email" placeholder="nama@email.com" />
+        </div>
         <p id="newAccountHint" style="font-size:0.85rem;color:var(--muted);">Buat akun baru dengan email ini, atau batal untuk memeriksa kembali penulisan email.</p>
         <div class="dialog-actions" style="flex-wrap:wrap;">
           <button class="secondary-button hidden" id="newAccountFixBtn" value="fix" type="button"></button>
@@ -536,6 +546,13 @@
     </dialog>
 
     <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
+
+    <div class="verify-banner hidden" id="verifyBanner" role="note">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v4m0 4h.01"></path></svg>
+      <span id="verifyBannerText">Email belum diverifikasi. Cek inbox (termasuk spam) untuk link verifikasi.</span>
+      <button type="button" id="resendVerifyBtn">Kirim ulang link</button>
+      <button type="button" id="closeVerifyBanner" aria-label="Tutup">&times;</button>
+    </div>
 
     <div class="demo-banner hidden" id="demoBanner" role="note">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 9v4m0 4h.01"></path><path d="M10.3 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.7 3.86a2 2 0 0 0-3.4 0Z"></path></svg>

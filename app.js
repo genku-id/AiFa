@@ -1,9 +1,11 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
 import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, collection, query, where, orderBy, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, fetchSignInMethodsForEmail, applyActionCode, signOut as authSignOut } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 
 const firebaseConfig = { apiKey: 'AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw', authDomain: 'gen-lang-client-0513521672.firebaseapp.com', projectId: 'gen-lang-client-0513521672', storageBucket: 'gen-lang-client-0513521672.firebasestorage.app', messagingSenderId: '358176864493', appId: '1:358176864493:web:24591e445aa4fe8612f4e4' };
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+const auth = getAuth(app);
 const STORAGE_KEY = 'aifa.finance.v2';
 const DEFAULT_DATA = { users: {}, workspaces: {}, messages: {}, currentEmail: null, activeWorkspaceId: null };
 const TYPE_LABELS = { income: 'Pendapatan', expense: 'Pengeluaran', saving: 'Tabungan' };
@@ -26,6 +28,7 @@ const state = loadState();
 let selectedType = 'expense', showSavings = false, deferredPrompt;
 let pendingNewAccountEmail = null;
 let pendingSetPasswordEmail = null;
+let firebaseSignedIn = false;
 let demoMode = false;
 const DEMO_EMAIL = 'fulan@demo.aifa';
 let confirmAction = null;
@@ -47,6 +50,16 @@ const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
   stepAuth: document.querySelector('#stepAuth'), stepProfile: document.querySelector('#stepProfile'), stepWorkspace: document.querySelector('#stepWorkspace'),
   loginForm: document.querySelector('#loginForm'), emailInput: document.querySelector('#emailInput'), passwordInput: document.querySelector('#passwordInput'), loginError: document.querySelector('#loginError'), forgotPasswordLink: document.querySelector('#forgotPasswordLink'),
+  signupButton: document.querySelector('#signupButton'),
+  newAccountDialog: document.querySelector('#newAccountDialog'),
+  newAccountTitle: document.querySelector('#newAccountTitle'),
+  newAccountNotFound: document.querySelector('#newAccountNotFound'),
+  newAccountEmailField: document.querySelector('#newAccountEmailField'),
+  newAccountEmailInput: document.querySelector('#newAccountEmailInput'),
+  verifyBanner: document.querySelector('#verifyBanner'),
+  verifyBannerText: document.querySelector('#verifyBannerText'),
+  resendVerifyBtn: document.querySelector('#resendVerifyBtn'),
+  closeVerifyBanner: document.querySelector('#closeVerifyBanner'),
   demoButton: document.querySelector('#demoButton'), demoBanner: document.querySelector('#demoBanner'), demoExitBtn: document.querySelector('#demoExitBtn'), splashView: document.querySelector('#splashView'),
   onboardProfileForm: document.querySelector('#onboardProfileForm'), onboardAvatarPreview: document.querySelector('#onboardAvatarPreview'),
   onboardAvatarInput: document.querySelector('#onboardAvatarInput'), onboardNameInput: document.querySelector('#onboardNameInput'),
@@ -99,7 +112,6 @@ const els = {
   profileBubbleTrigger: document.querySelector('#profileBubbleTrigger'),
   profileBubbleMenu: document.querySelector('#profileBubbleMenu'),
   workspaceSettingsButton: document.querySelector('#workspaceSettingsButton'),
-  newAccountDialog: document.querySelector('#newAccountDialog'),
   newAccountEmail: document.querySelector('#newAccountEmail'),
   newAccountHint: document.querySelector('#newAccountHint'),
   newAccountCreateBtn: document.querySelector('#newAccountCreateBtn'),
@@ -172,6 +184,11 @@ function boot() {
   setupInstallBanner();
   startReminderScheduler();
   window.addEventListener('popstate', handlePopState);
+  handleVerifyEmailFromUrl();
+  onAuthStateChanged(auth, (u) => {
+    if (u) { firebaseSignedIn = true; }
+    refreshVerifyBanner();
+  });
   const splashShownAt = Date.now();
   const hideSplash = () => {
     if (!els.splashView) return;
@@ -474,6 +491,7 @@ function enterDemo() {
   unsubWorkspaces = null; messageSubs = {}; userSubs = {};
   state.messages = {};
   if (els.demoBanner) els.demoBanner.classList.remove('hidden');
+  if (els.verifyBanner) els.verifyBanner.classList.add('hidden');
   showStep('dashboard'); render();
   showToast('Mode demo diaktifkan. Data tidak tersimpan.');
 }
@@ -481,11 +499,88 @@ function enterDemo() {
 function exitDemo() {
   demoMode = false;
   if (els.demoBanner) els.demoBanner.classList.add('hidden');
+  if (els.verifyBanner) els.verifyBanner.classList.add('hidden');
   Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
   showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
   periodRecoveryPrompted = false;
   saveState();
   showStep('auth');
+}
+
+function getVerifyTarget() {
+  return { url: location.origin + location.pathname, handleCodeInApp: true };
+}
+
+async function ensureUserDoc(email) {
+  const snap = await getDoc(doc(db, 'users', email));
+  if (snap.exists()) return snap.data();
+  const userObj = { email, name: email.split('@')[0], role: null, wa: null, avatarUrl: null, tier: 'free', createdAt: new Date().toISOString() };
+  await setDoc(doc(db, 'users', email), userObj);
+  return userObj;
+}
+
+async function trySendVerification(user) {
+  try {
+    await sendEmailVerification(user, getVerifyTarget());
+  } catch (err) {
+    if (err.code === 'auth/unauthorized-continue-uri') {
+      try { await sendEmailVerification(user); } catch (e2) { throw e2; }
+    } else { throw err; }
+  }
+}
+
+async function sendVerificationLinkIfNeeded() {
+  const u = auth.currentUser;
+  if (!u || u.emailVerified) return;
+  try { await trySendVerification(u); }
+  catch (err) {
+    if (err.code === 'auth/too-many-requests') {
+      console.warn('sendVerification throttled:', err);
+      showToast('Email verifikasi terlalu sering dikirim. Tunggu sebentar lalu gunakan tombol "Kirim ulang link".');
+    } else {
+      console.error('sendVerification error:', err);
+      showToast('Gagal mengirim email verifikasi. Kamu tetap bisa pakai tombol "Kirim ulang link" nanti.');
+    }
+  }
+}
+
+async function migrateLegacyAccount(email, password, data) {
+  try {
+    await createUserWithEmailAndPassword(auth, email, password);
+  } catch (err) {
+    if (err.code === 'auth/invalid-email' || err.code === 'auth/operation-not-allowed') { firebaseSignedIn = false; return null; }
+    if (err.code === 'auth/email-already-in-use') {
+      try { await signInWithEmailAndPassword(auth, email, password); } catch (e2) { firebaseSignedIn = false; return null; }
+    } else { throw err; }
+  }
+  firebaseSignedIn = true;
+  try { await setDoc(doc(db, 'users', email), Object.assign({}, data, { migratedToFb: true }), { merge: true }); } catch (e) { console.error('markMigrated error:', e); }
+  await sendVerificationLinkIfNeeded();
+  return auth.currentUser;
+}
+
+function refreshVerifyBanner() {
+  if (!els.verifyBanner) return;
+  const u = auth.currentUser;
+  if (demoMode || !u || u.emailVerified) { els.verifyBanner.classList.add('hidden'); return; }
+  els.verifyBanner.classList.remove('hidden');
+}
+
+async function handleVerifyEmailFromUrl() {
+  const p = new URLSearchParams(window.location.search);
+  if (p.get('mode') !== 'verifyEmail') return;
+  const oobCode = p.get('oobCode');
+  if (!oobCode) return;
+  try {
+    await applyActionCode(auth, oobCode);
+    if (auth.currentUser) { try { await auth.currentUser.reload(); } catch (e) {} }
+    showToast('Email kamu sudah terverifikasi!');
+    refreshVerifyBanner();
+  } catch (err) {
+    console.warn('verifyEmail action failed:', err.code || err.message);
+  } finally {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
 }
 
 function completeLogin(email, data) {
@@ -495,6 +590,7 @@ function completeLogin(email, data) {
   const p = new URLSearchParams(window.location.search);
   if (p.get('inviteId') && p.get('inviteName')) joinWorkspaceFromInvite(p.get('inviteId'), p.get('inviteName')).then(render);
   ensureActiveWorkspace(); showStep('dashboard'); render();
+  refreshVerifyBanner();
   showToast('Selamat datang, ' + (data.name || email.split('@')[0]) + '!');
 }
 
@@ -532,6 +628,23 @@ function bindEvents() {
     const btn = document.querySelector('#loginSubmitBtn');
     btn.disabled = true; btn.textContent = 'Memeriksa...';
     try {
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        firebaseSignedIn = true;
+        const data = await ensureUserDoc(cred.user.email);
+        completeLogin(email, data);
+        if (!cred.user.emailVerified) showToast('Email belum diverifikasi. Cek inbox untuk link verifikasi.');
+        return;
+      } catch (fErr) {
+        const legacyOnly = ['auth/invalid-credential', 'auth/user-not-found', 'auth/wrong-password', 'auth/invalid-email', 'auth/operation-not-allowed'].includes(fErr.code);
+        if (!legacyOnly) {
+          console.error('firebase signIn error:', fErr.code || fErr);
+          if (fErr.code === 'auth/too-many-requests') {
+            if (els.loginError) { els.loginError.textContent = 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.'; els.loginError.style.display = 'block'; }
+            return;
+          }
+        }
+      }
       const userSnap = await getDoc(doc(db, 'users', email));
       if (userSnap.exists()) {
         const data = userSnap.data();
@@ -545,9 +658,17 @@ function bindEvents() {
           if (els.loginError) { els.loginError.textContent = 'Password salah. Coba lagi.'; els.loginError.style.display = 'block'; }
           return;
         }
+        const fbUser = await migrateLegacyAccount(email, password, data);
         completeLogin(email, data);
+        if (fbUser && !fbUser.emailVerified) showToast('Akun disinkronkan. Link verifikasi dikirim ke email kamu.');
+        return;
       } else {
         pendingNewAccountEmail = email;
+        els.newAccountDialog.dataset.mode = 'notfound';
+        els.newAccountTitle.textContent = 'Akun tidak ditemukan';
+        if (els.newAccountNotFound) els.newAccountNotFound.classList.remove('hidden');
+        if (els.newAccountEmailField) els.newAccountEmailField.classList.add('hidden');
+        if (els.newAccountHint) { els.newAccountHint.textContent = 'Buat akun baru dengan email ini, atau batal untuk memeriksa kembali penulisan email.'; els.newAccountHint.style.color = ''; }
         els.newAccountEmail.textContent = email;
         const parts = email.split('@');
         const fix = parts.length === 2 ? EMAIL_TYPOS[parts[1].toLowerCase()] : null;
@@ -567,10 +688,28 @@ function bindEvents() {
     } finally { btn.disabled = false; btn.textContent = 'Masuk'; }
   });
 
-  els.forgotPasswordLink && els.forgotPasswordLink.addEventListener('click', (e) => {
+  els.forgotPasswordLink && els.forgotPasswordLink.addEventListener('click', async (e) => {
     e.preventDefault();
-    const email = normalizeEmail(els.emailInput.value) || '[email akunmu]';
-    window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
+    const email = normalizeEmail(els.emailInput.value);
+    if (!email) { els.emailInput.focus(); return; }
+    const link = els.forgotPasswordLink;
+    link.textContent = 'Mengirim...';
+    try {
+      const methods = await fetchSignInMethodsForEmail(auth, email);
+      if (methods && methods.length > 0) {
+        await sendPasswordResetEmail(auth, email);
+        showToast('Link reset password terkirim ke email kamu.');
+      } else {
+        window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
+      }
+    } catch (err) {
+      if (err.code === 'auth/invalid-email') {
+        window.open('https://wa.me/6285179813540?text=' + encodeURIComponent('Halo Admin AiFa, saya lupa password akun. Email saya: ' + email + '. Mohon bantuan reset password.'), '_blank');
+      } else {
+        console.error('forgotPassword error:', err);
+        showToast('Gagal mengirim. Coba lagi atau hubungi admin.');
+      }
+    } finally { link.textContent = 'Lupa password?'; }
   });
 
   els.demoButton && els.demoButton.addEventListener('click', enterDemo);
@@ -592,9 +731,24 @@ function bindEvents() {
       data.password = await makePassword(pw);
       state.users[email] = data;
       await setDoc(doc(db, 'users', email), data);
+      let fbOk = false;
+      try {
+        await createUserWithEmailAndPassword(auth, email, pw);
+        fbOk = true;
+      } catch (fbErr) {
+        if (fbErr.code === 'auth/email-already-in-use') {
+          await signInWithEmailAndPassword(auth, email, pw);
+          fbOk = true;
+        } else if (fbErr.code === 'auth/invalid-email' || fbErr.code === 'auth/operation-not-allowed') {
+          fbOk = false;
+        } else { throw fbErr; }
+      }
+      firebaseSignedIn = fbOk;
+      if (fbOk) await sendVerificationLinkIfNeeded();
       els.setPasswordDialog.close();
       pendingSetPasswordEmail = null;
       completeLogin(email, data);
+      if (fbOk && auth.currentUser && !auth.currentUser.emailVerified) showToast('Password tersimpan. Link verifikasi dikirim ke email kamu.');
     } catch (err) {
       console.error('setPassword error:', err);
       errEl.textContent = 'Gagal menyimpan password. Cek koneksi lalu coba lagi.';
@@ -605,9 +759,28 @@ function bindEvents() {
   els.setPasswordCancelBtn && els.setPasswordCancelBtn.addEventListener('click', () => { pendingSetPasswordEmail = null; els.setPasswordDialog.close(); els.passwordInput.focus(); });
   els.setPasswordDialog && els.setPasswordDialog.addEventListener('click', (e) => { if (e.target === els.setPasswordDialog) { pendingSetPasswordEmail = null; els.setPasswordDialog.close(); } });
 
+  els.signupButton && els.signupButton.addEventListener('click', (e) => {
+    e.preventDefault();
+    pendingNewAccountEmail = null;
+    els.newAccountDialog.dataset.mode = 'signup';
+    els.newAccountTitle.textContent = 'Buat Akun Baru';
+    if (els.newAccountNotFound) els.newAccountNotFound.classList.add('hidden');
+    if (els.newAccountEmailField) els.newAccountEmailField.classList.remove('hidden');
+    if (els.newAccountFixBtn) els.newAccountFixBtn.classList.add('hidden');
+    if (els.newAccountHint) { els.newAccountHint.textContent = 'Masukkan email untuk membuat akun baru.'; els.newAccountHint.style.color = ''; }
+    if (els.newAccountEmailInput) els.newAccountEmailInput.value = normalizeEmail(els.emailInput.value);
+    els.newAccountDialog.showModal();
+    if (els.newAccountEmailInput) setTimeout(() => els.newAccountEmailInput.focus(), 50);
+  });
+
   els.newAccountCreateBtn && els.newAccountCreateBtn.addEventListener('click', () => {
+    const mode = els.newAccountDialog.dataset.mode || 'notfound';
+    const email = mode === 'signup' ? normalizeEmail(els.newAccountEmailInput.value) : pendingNewAccountEmail;
+    if (!email) { if (els.newAccountEmailInput) els.newAccountEmailInput.focus(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { els.newAccountHint.textContent = 'Format email tidak valid.'; els.newAccountHint.style.color = 'var(--danger,#d9534f)'; return; }
     els.newAccountDialog.close();
-    beginNewAccount(pendingNewAccountEmail);
+    if (mode === 'signup') els.emailInput.value = email;
+    beginNewAccount(email);
   });
   els.newAccountCancelBtn && els.newAccountCancelBtn.addEventListener('click', () => {
     pendingNewAccountEmail = null;
@@ -636,20 +809,44 @@ function bindEvents() {
     const pw2 = els.onboardPasswordConfirmInput.value;
     if (pw.length < 6) { errEl.textContent = 'Password minimal 6 karakter.'; errEl.style.display = 'block'; return; }
     if (pw !== pw2) { errEl.textContent = 'Password tidak sama.'; errEl.style.display = 'block'; return; }
-    const userObj = { email: state.currentEmail, name: els.onboardNameInput.value.trim() || state.currentEmail.split('@')[0], role: els.onboardRoleInput.value.trim() || null, wa: els.onboardWaInput.value.trim() || null, avatarUrl: els.onboardAvatarPreview.dataset.avatar || null, tier: 'free', createdAt: new Date().toISOString() };
-    userObj.password = await makePassword(pw);
-    state.users[state.currentEmail] = userObj;
-    setDoc(doc(db, 'users', state.currentEmail), userObj).catch((err) => {
-      console.error('createUser error:', err);
-      showToast('Gagal menyimpan akun ke server: ' + (err.code || err.message));
-    });
-    saveState();
-    const pid = sessionStorage.getItem('pendingInviteId'), pname = sessionStorage.getItem('pendingInviteName');
-    if (pid) {
-      joinWorkspaceFromInvite(pid, pname || 'Ruang Bersama');
-      sessionStorage.removeItem('pendingInviteId'); sessionStorage.removeItem('pendingInviteName');
-      subscribeToData(); showStep('dashboard'); render();
-    } else { showStep('workspace'); }
+    const submitBtn = els.onboardProfileForm.querySelector('button[type="submit"]');
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Menyimpan...'; }
+    try {
+      const email = state.currentEmail;
+      const userObj = { email, name: els.onboardNameInput.value.trim() || email.split('@')[0], role: els.onboardRoleInput.value.trim() || null, wa: els.onboardWaInput.value.trim() || null, avatarUrl: els.onboardAvatarPreview.dataset.avatar || null, tier: 'free', createdAt: new Date().toISOString() };
+      let fbCreated = false;
+      try {
+        await createUserWithEmailAndPassword(auth, email, pw);
+        fbCreated = true;
+      } catch (fbErr) {
+        if (fbErr.code === 'auth/email-already-in-use') {
+          errEl.textContent = 'Email ini sudah terdaftar. Silakan masuk dengan password-nya.';
+          errEl.style.display = 'block';
+          return;
+        }
+        if (fbErr.code !== 'auth/invalid-email' && fbErr.code !== 'auth/operation-not-allowed') throw fbErr;
+      }
+      firebaseSignedIn = fbCreated;
+      if (!fbCreated) userObj.password = await makePassword(pw);
+      state.users[email] = userObj;
+      try { await setDoc(doc(db, 'users', email), userObj); }
+      catch (se) { console.error('createUser error:', se); showToast('Gagal menyimpan akun ke server: ' + (se.code || se.message)); }
+      if (fbCreated) await sendVerificationLinkIfNeeded();
+      saveState();
+      const pid = sessionStorage.getItem('pendingInviteId'), pname = sessionStorage.getItem('pendingInviteName');
+      if (pid) {
+        joinWorkspaceFromInvite(pid, pname || 'Ruang Bersama');
+        sessionStorage.removeItem('pendingInviteId'); sessionStorage.removeItem('pendingInviteName');
+        subscribeToData(); showStep('dashboard'); render();
+      } else { showStep('workspace'); }
+      refreshVerifyBanner();
+      if (fbCreated) showToast('Akun dibuat! Link verifikasi dikirim ke email kamu.');
+      else showToast('Akun dibuat!');
+    } catch (err) {
+      console.error('onboard error:', err);
+      errEl.textContent = 'Gagal membuat akun. Cek koneksi lalu coba lagi.';
+      errEl.style.display = 'block';
+    } finally { if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = 'Lanjut &rarr;'; } }
   });
 
   document.querySelectorAll('input[name="tier"]').forEach(r => {
@@ -687,10 +884,22 @@ function bindEvents() {
   Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
     showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
     periodRecoveryPrompted = false;
+    firebaseSignedIn = false;
+    if (els.verifyBanner) els.verifyBanner.classList.add('hidden');
+    try { if (auth.currentUser) authSignOut(auth); } catch (e) {}
     saveState(); showStep('auth');
     els.emailInput.value = '';
     if (els.passwordInput) { els.passwordInput.value = ''; if (els.loginError) els.loginError.style.display = 'none'; }
   });
+
+  els.resendVerifyBtn && els.resendVerifyBtn.addEventListener('click', async () => {
+    const u = auth.currentUser; if (!u) return;
+    els.resendVerifyBtn.disabled = true; els.resendVerifyBtn.textContent = 'Mengirim...';
+    try { await trySendVerification(u); showToast('Link verifikasi dikirim ulang. Cek inbox kamu.'); }
+    catch (err) { console.error('resend verify error:', err); showToast('Gagal mengirim link. Coba lagi nanti.'); }
+    finally { els.resendVerifyBtn.disabled = false; els.resendVerifyBtn.textContent = 'Kirim ulang link'; }
+  });
+  els.closeVerifyBanner && els.closeVerifyBanner.addEventListener('click', () => { if (els.verifyBanner) els.verifyBanner.classList.add('hidden'); });
 
   els.closeInstallBanner && els.closeInstallBanner.addEventListener('click', () => { els.installBanner.classList.remove('show'); setTimeout(() => els.installBanner.classList.add('hidden'), 300); localStorage.setItem('installBannerDismissed', 'true'); });
   els.installButton && els.installButton.addEventListener('click', async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); const { outcome } = await deferredPrompt.userChoice; if (outcome === 'accepted') { els.installBanner.classList.remove('show'); setTimeout(() => els.installBanner.classList.add('hidden'), 300); } deferredPrompt = null; });

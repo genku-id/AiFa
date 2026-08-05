@@ -886,6 +886,9 @@ function bindEvents() {
     periodRecoveryPrompted = false;
     firebaseSignedIn = false;
     if (els.verifyBanner) els.verifyBanner.classList.add('hidden');
+    ['profileDialog', 'setPasswordDialog', 'roomSettingsDialog', 'confirmDialog', 'newAccountDialog'].forEach(id => {
+      const d = els[id]; if (d && d.open && typeof d.close === 'function') { try { d.close(); } catch (e) {} }
+    });
     try { if (auth.currentUser) authSignOut(auth); } catch (e) {}
     saveState(); showStep('auth');
     els.emailInput.value = '';

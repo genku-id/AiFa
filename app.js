@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
 import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, collection, query, where, orderBy, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
-import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, fetchSignInMethodsForEmail, applyActionCode, signOut as authSignOut } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
+import { getAuth, onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, fetchSignInMethodsForEmail, applyActionCode, signOut as authSignOut, deleteUser, reauthenticateWithCredential, EmailAuthProvider } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js';
 
 const firebaseConfig = { apiKey: 'AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw', authDomain: 'gen-lang-client-0513521672.firebaseapp.com', projectId: 'gen-lang-client-0513521672', storageBucket: 'gen-lang-client-0513521672.firebasestorage.app', messagingSenderId: '358176864493', appId: '1:358176864493:web:24591e445aa4fe8612f4e4' };
 const app = initializeApp(firebaseConfig);
@@ -93,7 +93,7 @@ const els = {
   profileWaInput: document.querySelector('#profileWaInput'),
   reminderToggle: document.querySelector('#reminderToggle'),
   reminderTimeInput: document.querySelector('#reminderTimeInput'), paydayAlertContainer: document.querySelector('#paydayAlertContainer'),
-  profileCurPasswordInput: document.querySelector('#profileCurPasswordInput'), profileNewPasswordInput: document.querySelector('#profileNewPasswordInput'), profileNewPassword2Input: document.querySelector('#profileNewPassword2Input'),
+  profileCurPasswordInput: document.querySelector('#profileCurPasswordInput'), profileNewPasswordInput: document.querySelector('#profileNewPasswordInput'), profileNewPassword2Input: document.querySelector('#profileNewPassword2Input'), profileDeleteBtn: document.querySelector('#profileDeleteBtn'),
   setPasswordDialog: document.querySelector('#setPasswordDialog'), setPasswordForm: document.querySelector('#setPasswordForm'),
   setPasswordEmail: document.querySelector('#setPasswordEmail'), setPasswordNewInput: document.querySelector('#setPasswordNewInput'),
   setPasswordConfirmInput: document.querySelector('#setPasswordConfirmInput'), setPasswordError: document.querySelector('#setPasswordError'),
@@ -309,7 +309,7 @@ function subscribeToData() {
   const wq = query(collection(db, 'workspaces'), where('members', 'array-contains', state.currentEmail));
   unsubWorkspaces = onSnapshot(wq, (snap) => {
     snap.docChanges().forEach((ch) => {
-      if (ch.type === 'added' || ch.type === 'modified') { state.workspaces[ch.doc.id] = ch.doc.data(); migrateLegacyChat(state.workspaces[ch.doc.id]); }
+      if (ch.type === 'added' || ch.type === 'modified') { const d = ch.doc.data(); if (!d.id) d.id = ch.doc.id; state.workspaces[ch.doc.id] = d; migrateLegacyChat(state.workspaces[ch.doc.id]); }
       if (ch.type === 'removed') delete state.workspaces[ch.doc.id];
     });
     resubscribeMessages();
@@ -874,14 +874,14 @@ function bindEvents() {
     showToast('Ruang "' + roomName + '" berhasil dibuat!');
   });
 
-  els.logoutButton.addEventListener('click', () => {
+  function clearSession() {
     if (unsubWorkspaces) unsubWorkspaces();
     Object.values(messageSubs).forEach(u => u());
     Object.values(userSubs).forEach(u => u());
     unsubWorkspaces = null; messageSubs = {}; userSubs = {};
     demoMode = false;
-  if (els.demoBanner) els.demoBanner.classList.add('hidden');
-  Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
+    if (els.demoBanner) els.demoBanner.classList.add('hidden');
+    Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
     showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
     periodRecoveryPrompted = false;
     firebaseSignedIn = false;
@@ -890,7 +890,9 @@ function bindEvents() {
     saveState(); showStep('auth');
     els.emailInput.value = '';
     if (els.passwordInput) { els.passwordInput.value = ''; if (els.loginError) els.loginError.style.display = 'none'; }
-  });
+  }
+
+  els.logoutButton.addEventListener('click', clearSession);
 
   els.resendVerifyBtn && els.resendVerifyBtn.addEventListener('click', async () => {
     const u = auth.currentUser; if (!u) return;
@@ -1012,6 +1014,51 @@ function bindEvents() {
     }
     saveState(); render(); syncReminder();
     els.profileDialog.close();
+  });
+
+  // Hapus akun
+  els.profileDeleteBtn && els.profileDeleteBtn.addEventListener('click', () => {
+    const email = state.currentEmail; if (!email) return;
+    const pw = els.profileCurPasswordInput ? els.profileCurPasswordInput.value : '';
+    if (!pw) { showToast('Isi kolom "Password saat ini" sebagai konfirmasi.'); return; }
+    openConfirm('Hapus akun?', 'Akun "' + email + '" dan seluruh datanya akan dihapus permanen. Ruang yang kamu buat dipindah ke anggota lain (jika tidak ada, ruang dihapus). Tindakan ini tidak bisa dibatalkan.', 'Ya, hapus akun', async () => {
+      if (demoMode) { clearSession(); showToast('Akun demo dihapus.'); return; }
+      try {
+        const user = state.users[email];
+        if (auth.currentUser) {
+          try { await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(email, pw)); }
+          catch (ea) { console.error('reauth error:', ea.code || ea); showToast('Password salah.'); return; }
+        } else if (!user || !hasPassword(user)) {
+          showToast('Akun ini tidak bisa diverifikasi. Hubungi admin.'); return;
+        } else {
+          const ok = await verifyPassword(pw, user.password);
+          if (!ok) { showToast('Password salah.'); return; }
+        }
+        for (const wsId of Object.keys(state.workspaces)) {
+          const ws = state.workspaces[wsId];
+          if (!(ws.members || []).includes(email)) continue;
+          if (ws.ownerEmail === email) {
+            const others = (ws.members || []).filter(m => m !== email);
+            if (others.length) {
+              try { await updateDoc(doc(db, 'workspaces', wsId), { ownerEmail: others[0] }); } catch (e) { console.error('transfer owner error:', e); }
+            } else {
+              const msgs = (state.messages && state.messages[wsId]) || [];
+              msgs.forEach(m => deleteDoc(doc(db, 'workspaces', wsId, 'messages', m.id)).catch(console.error));
+              try { await deleteDoc(doc(db, 'workspaces', wsId)); } catch (e) { console.error('delete ws error:', e); }
+            }
+          } else {
+            try { await updateDoc(doc(db, 'workspaces', wsId), { members: arrayRemove(email) }); } catch (e) { console.error('remove member error:', e); }
+          }
+        }
+        try { await deleteDoc(doc(db, 'users', email)); } catch (e) { console.error('delete user doc error:', e); }
+        try { if (auth.currentUser) await deleteUser(auth.currentUser); } catch (e) { console.error('deleteUser error:', e); }
+        clearSession();
+        showToast('Akun berhasil dihapus.');
+      } catch (err) {
+        console.error('delete account error:', err);
+        showToast('Gagal menghapus akun. Coba lagi nanti.');
+      }
+    });
   });
 
   // Custom workspace dropdown toggle

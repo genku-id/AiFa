@@ -1446,6 +1446,8 @@ svg {
 }
 
 .income-text strong { color: var(--income); font-size: 0.9rem; }
+.incomeTotal { cursor: pointer; border-bottom: 1px dotted rgba(0,0,0,0.25); }
+.incomeTotal:hover { opacity: 0.8; }
 .expense-text strong { color: var(--expense); font-size: 0.9rem; }
 .balance-text strong { color: var(--balance); font-size: 0.9rem; }
 .saving-text strong { color: var(--saving); font-size: 0.9rem; }

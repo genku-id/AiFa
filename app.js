@@ -743,6 +743,7 @@ function bindEvents() {
   renderComposerMode();
 
   els.transactionAmountInput.addEventListener('input', () => { const a = parseAmount(els.transactionAmountInput.value); els.transactionAmountInput.value = a > 0 ? formatPlainNumber(a) : ''; });
+  els.incomeTotal.forEach(el => el.addEventListener('click', () => { el.classList.toggle('expanded'); renderTotals(); }));
   els.toggleSavingsButton.forEach(b => b.addEventListener('click', () => {
     showSavings = !showSavings;
     els.toggleSavingsButton.forEach(btn => btn.classList.toggle('revealed', showSavings));
@@ -1202,7 +1203,8 @@ function renderHeader() {
 function renderTotals() {
   const ws = getActiveWorkspace(); if (!ws) return;
   const t = calculateTotals(ws);
-  els.incomeTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
+  const net = t.income - t.expense - t.saving;
+  els.incomeTotal.forEach(el => el.textContent = el.classList.contains('expanded') ? formatCurrency(net) : formatSummaryCurrency(net));
   els.expenseTotal.forEach(el => el.textContent = formatSummaryCurrency(t.expense));
   els.balanceTotal.forEach(el => el.textContent = formatSummaryCurrency(t.income - t.expense - t.saving));
   els.savingTotal.forEach(el => el.textContent = showSavings ? formatSummaryCurrency(t.saving) : '***');

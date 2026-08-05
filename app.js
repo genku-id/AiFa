@@ -1,5 +1,5 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js';
-import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, collection, query, where, orderBy, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
+import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, collection, query, where, orderBy, deleteField } from 'https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js';
 
 const firebaseConfig = { apiKey: 'AIzaSyCxMQNFI35QS2qE4TbUDi14rQ5LfJuthAw', authDomain: 'gen-lang-client-0513521672.firebaseapp.com', projectId: 'gen-lang-client-0513521672', storageBucket: 'gen-lang-client-0513521672.firebasestorage.app', messagingSenderId: '358176864493', appId: '1:358176864493:web:24591e445aa4fe8612f4e4' };
 const app = initializeApp(firebaseConfig);
@@ -39,8 +39,9 @@ let composerMode = localStorage.getItem('aifa.composer.mode') === 'chat' ? 'chat
 let modeMenuOpenedAt = 0;
 let editType = 'expense';
 let trxMenuOpenedAt = 0;
-let unsubWorkspaces = null, unsubUsers = null;
+let unsubWorkspaces = null;
 let messageSubs = {};
+let userSubs = {};
 let migratedWs = new Set();
 const els = {
   authView: document.querySelector('#authView'), mainView: document.querySelector('#mainView'),
@@ -283,9 +284,10 @@ function subscribeToData() {
   if (demoMode) return;
   if (!state.currentEmail) return;
   if (unsubWorkspaces) unsubWorkspaces();
-  if (unsubUsers) unsubUsers();
   Object.values(messageSubs).forEach(u => u());
+  Object.values(userSubs).forEach(u => u());
   messageSubs = {};
+  userSubs = {};
   state.messages = {};
   const wq = query(collection(db, 'workspaces'), where('members', 'array-contains', state.currentEmail));
   unsubWorkspaces = onSnapshot(wq, (snap) => {
@@ -294,19 +296,13 @@ function subscribeToData() {
       if (ch.type === 'removed') delete state.workspaces[ch.doc.id];
     });
     resubscribeMessages();
+    resubscribeUsers();
     render();
   }, (err) => {
     console.error('Gagal memuat ruang:', err);
     showToast('Gagal memuat ruang dari server. Cek koneksi & izin Firestore.');
   });
-  unsubUsers = onSnapshot(collection(db, 'users'), (snap) => {
-    snap.docChanges().forEach((ch) => {
-      if (ch.type === 'added' || ch.type === 'modified') state.users[ch.doc.id] = ch.doc.data();
-    });
-    render();
-  }, (err) => {
-    console.error('Gagal memuat data pengguna:', err);
-  });
+  resubscribeUsers();
 }
 
 async function joinWorkspaceFromInvite(inviteId, inviteName) {
@@ -473,9 +469,9 @@ function enterDemo() {
   state.currentEmail = DEMO_EMAIL;
   state.activeWorkspaceId = d.activeId;
   if (unsubWorkspaces) unsubWorkspaces();
-  if (unsubUsers) unsubUsers();
   Object.values(messageSubs).forEach(u => u());
-  unsubWorkspaces = null; unsubUsers = null; messageSubs = {};
+  Object.values(userSubs).forEach(u => u());
+  unsubWorkspaces = null; messageSubs = {}; userSubs = {};
   state.messages = {};
   if (els.demoBanner) els.demoBanner.classList.remove('hidden');
   showStep('dashboard'); render();
@@ -682,11 +678,11 @@ function bindEvents() {
   });
 
   els.logoutButton.addEventListener('click', () => {
-  if (unsubWorkspaces) unsubWorkspaces();
-  if (unsubUsers) unsubUsers();
-  Object.values(messageSubs).forEach(u => u());
-  unsubWorkspaces = null; unsubUsers = null; messageSubs = {};
-  demoMode = false;
+    if (unsubWorkspaces) unsubWorkspaces();
+    Object.values(messageSubs).forEach(u => u());
+    Object.values(userSubs).forEach(u => u());
+    unsubWorkspaces = null; messageSubs = {}; userSubs = {};
+    demoMode = false;
   if (els.demoBanner) els.demoBanner.classList.add('hidden');
   Object.assign(state, { currentEmail: null, activeWorkspaceId: null, users: {}, workspaces: {}, messages: {} });
     showSavings = false; els.toggleSavingsButton.forEach(b => b.classList.remove('revealed'));
@@ -731,9 +727,14 @@ function bindEvents() {
     if (tier === 'free') { const cnt = (ws.transactions || []).filter(t => t.periodId === ws.activePeriodId).length; if (cnt >= 30) { els.upgradeDialog.showModal(); return; } }
     const note = els.transactionNoteInput.value.trim(), amount = parseAmount(els.transactionAmountInput.value);
     if (!note || amount <= 0) return;
-    ws.transactions.push({ id: createId('trx'), type: selectedType, note, amount, actorEmail: state.currentEmail, periodId: selectedType === 'saving' ? null : ws.activePeriodId, createdAt: new Date().toISOString(), privateOwnerEmail: selectedType === 'saving' ? state.currentEmail : null });
+    const tx = { id: createId('trx'), type: selectedType, note, amount, actorEmail: state.currentEmail, periodId: selectedType === 'saving' ? null : ws.activePeriodId, createdAt: new Date().toISOString(), privateOwnerEmail: selectedType === 'saving' ? state.currentEmail : null };
+    ws.transactions.push(tx);
     els.transactionNoteInput.value = ''; els.transactionAmountInput.value = '';
-    saveState(); render(); showToast(selectedType === 'saving' ? 'Tabungan tercatat.' : TYPE_LABELS[selectedType] + ' tercatat.'); scrollFeedToBottom();
+    if (!demoMode) updateDoc(doc(db, 'workspaces', ws.id), { transactions: arrayUnion(tx) }).catch((err) => {
+      console.error('addTransaction error:', err);
+      showToast('Gagal menyimpan: ' + (err.code || err.message));
+    });
+    render(); showToast(selectedType === 'saving' ? 'Tabungan tercatat.' : TYPE_LABELS[selectedType] + ' tercatat.'); scrollFeedToBottom();
   });
 
   els.modeDotsBtn && els.modeDotsBtn.addEventListener('click', (e) => {
@@ -888,11 +889,13 @@ function bindEvents() {
   els.roomSettingsResetBtn && els.roomSettingsResetBtn.addEventListener('click', () => {
     const ws = getActiveWorkspace(); if (!ws) return;
     openConfirm('Reset chat ruang?', 'Semua isi chat di ruang "' + ws.name + '" (pesan chat, pendapatan, pengeluaran, dan arsip) akan dihapus. Tabungan tetap aman.', 'Ya, reset', () => {
+      const oldTx = (ws.transactions || []).slice();
       ws.transactions = [];
       const chats = getChats(ws);
       if (!demoMode) chats.slice().forEach(c => deleteDoc(doc(db, 'workspaces', ws.id, 'messages', c.id)).catch(console.error));
       chats.length = 0;
-      saveState(); render();
+      if (!demoMode && oldTx.length) updateDoc(doc(db, 'workspaces', ws.id), { transactions: arrayRemove(...oldTx) }).catch(console.error);
+      render();
       showToast('Chat ruang telah di-reset.');
     });
   });
@@ -941,7 +944,8 @@ function bindEvents() {
       openConfirm('Hapus catatan ini?', 'Catatan "' + t.note + '" sebesar ' + formatCurrency(t.amount) + ' akan dihapus permanen.', 'Hapus', () => {
         const ws = getActiveWorkspace(); if (!ws) return;
         ws.transactions = ws.transactions.filter(x => x.id !== t.id);
-        saveState(); render();
+        if (!demoMode) updateDoc(doc(db, 'workspaces', ws.id), { transactions: arrayRemove(t) }).catch(console.error);
+        render();
         showToast('Catatan dihapus.');
       });
     }
@@ -964,10 +968,18 @@ function bindEvents() {
     const note = els.editNoteInput.value.trim();
     const amount = parseAmount(els.editAmountInput.value);
     if (!note || amount <= 0) return;
+    const oldTx = { ...t };
     t.note = note; t.amount = amount; t.type = editType;
     if (editType === 'saving') { t.periodId = null; t.privateOwnerEmail = state.currentEmail; }
     else { t.periodId = ws.activePeriodId; t.privateOwnerEmail = null; }
-    saveState(); render(); els.editTransactionDialog.close();
+    if (!demoMode) {
+      const wsRef = doc(db, 'workspaces', ws.id);
+      updateDoc(wsRef, { transactions: arrayRemove(oldTx) }).then(() => updateDoc(wsRef, { transactions: arrayUnion({ ...t }) })).catch((err) => {
+        console.error('editTransaction error:', err);
+        showToast('Gagal memperbarui: ' + (err.code || err.message));
+      });
+    }
+    render(); els.editTransactionDialog.close();
     showToast('Catatan diperbarui.');
   });
   els.editTransactionDialog && els.editTransactionDialog.addEventListener('close', () => { editingTrxId = null; });
@@ -1479,6 +1491,22 @@ function resubscribeMessages() {
   });
 }
 
+function resubscribeUsers() {
+  if (demoMode || !state.currentEmail) return;
+  const emails = new Set([state.currentEmail]);
+  Object.values(state.workspaces).forEach(w => (w.members || []).forEach(m => emails.add(m)));
+  for (const email of Object.keys(userSubs)) {
+    if (!emails.has(email)) { userSubs[email](); delete userSubs[email]; }
+  }
+  emails.forEach(email => {
+    if (userSubs[email]) return;
+    userSubs[email] = onSnapshot(doc(db, 'users', email), (snap) => {
+      if (snap.exists()) state.users[email] = snap.data();
+      render();
+    }, (err) => { console.error('Gagal memuat pengguna:', err); });
+  });
+}
+
 async function migrateLegacyChat(ws) {
   if (demoMode || !ws || migratedWs.has(ws.id)) return;
   const legacy = ws.chat;
@@ -1516,10 +1544,15 @@ function renderEditTypeSwitch() {
 }
 
 function refreshWorkspace(ws) {
-  ws.transactions = (ws.transactions || []).filter(t => !(t.type === 'expense' && t.periodId === ws.activePeriodId && t.actorEmail === state.currentEmail));
+  const removed = (ws.transactions || []).filter(t => t.type === 'expense' && t.periodId === ws.activePeriodId && t.actorEmail === state.currentEmail);
+  ws.transactions = (ws.transactions || []).filter(t => !removed.includes(t));
   const user = state.users[state.currentEmail];
   if (user) user.expenseClearedAt = new Date().toISOString();
-  saveState(); render(); showToast('Pengeluaranmu di periode ini telah dihapus.');
+  if (!demoMode) {
+    if (removed.length) updateDoc(doc(db, 'workspaces', ws.id), { transactions: arrayRemove(...removed) }).catch(console.error);
+    if (user) updateDoc(doc(db, 'users', state.currentEmail), { expenseClearedAt: user.expenseClearedAt }).catch(console.error);
+  }
+  render(); showToast('Pengeluaranmu di periode ini telah dihapus.');
 }
 
 function calculateTotals(ws) {
